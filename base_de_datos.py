@@ -84,6 +84,75 @@ class BaseDeDatos:
 
         return config
 
+    def ingresarProducto(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Ingresa un nuevo producto en la tabla PRODUCTO.
+        Maneja reintentos en caso de deadlock.
+
+        Args:
+            datos (list): Una lista con los datos del producto en el orden:
+                          [codigo, nombre, descripcion, precio_venta, 
+                           stock_actual, stock_minimo]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)  # Obtener el logger para este módulo
+        reintentar = True
+        
+        # Declarar cursor y conexión fuera del try para que existan en el finally
+        conexión = None
+        cursor = None
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()  # Abrir la conexión
+                cursor = conexión.cursor()
+                
+                # Consulta adaptada a la tabla PRODUCTO
+                # (El orden de columnas coincide con la lista 'producto' de Programa.py)
+                consulta = """INSERT INTO PRODUCTO(codigo, nombre, descripcion, precio_venta, stock_actual, stock_minimo)
+                              VALUES(%s, %s, %s, %s, %s, %s);
+                           """
+                
+                cursor.execute(consulta, datos)
+                conexión.commit()  # confirmar la transacción
+                reintentar = False
+                logger.info(f"Producto '{datos[1]}' (Código: {datos[0]}) ingresado exitosamente.")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(f"Deadlock detectado al ingresar producto. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)  # espera antes de reintentar
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock después de varios intentos.")
+                        raise
+                else:
+                    raise  # Relanzar otros InternalError
+
+            except mysql.connector.Error as err:
+                # Registra un error específico de MySQL si ocurre
+                logger.exception("Error de MySQL durante el ingreso del producto:")
+                raise
+
+            except Exception as e:
+                # Registra cualquier otro error inesperado
+                logger.exception("Error inesperado durante el ingreso del producto:")
+                raise
+
+            finally:
+                # Este bloque se ejecuta siempre, haya habido error o no
+                if cursor:
+                    # Cierra el cursor si fue creado
+                    cursor.close()
+                    logger.debug("Cursor cerrado.")
+                if conexión and conexión.is_connected():
+                    # Cierra la conexión a la base de datos si está abierta
+                    conexión.close()
+                    logger.info("Conexión a la base de datos cerrada.")
+
     # Respaldar una base de datos MySQL usando Python
     def respaldarBaseDeDatos(self, ubicación_respaldo):
         config = self.obtener_configuración()

@@ -454,48 +454,89 @@ class Aplicación(tk.Tk):
                                           sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
 
     def añadirProducto(self):
-        if self.esUnProductoVálido():  # Verifica si los datos ingresados son válidos.
-            nombre = self.nombre.get()  # Obtiene el nombre del producto.
-            precio = float(self.precio.get())  # Obtiene el precio como float.
-            categoria = self.categoria.get()  # Obtiene la categoría.
-            stock = int(self.stock.get())  # Obtiene el stock como entero.
-            es_deuda = self.tipo_movimiento.get() % 2  # Determina si es deuda (1) o haber (0).
-            medio = self.medio.get()  # Obtiene el medio de pago.
-            cantidad_de_cuotas = 1  # Valor por defecto para la cantidad de cuotas.
-            if self.cant_cuotas.get() != '':  # Si se especificó la cantidad de cuotas...
-                cantidad_de_cuotas = int(self.cant_cuotas.get())  # ...la obtiene como entero.
-            la_descripción = self.texto_desplazado.get("1.0", tk.END).rstrip('\n')  # Obtiene la descripción.
-            # Crea una lista con los datos del nuevo movimiento.
-            movimiento = [
-                fecha_string,
-                importe,
-                es_deuda,
-                en_dólares,
-                medio,
-                la_descripción,
-                cantidad_de_cuotas
+        """
+        Valida los campos de entrada y añade el nuevo producto a la base de datos.
+        """
+        if self.esUnProductoVálido():  # 1. Verifica si los datos ingresados son válidos.
+            
+            # 2. Obtiene los datos de los widgets de entrada
+            código = self.código.get().strip()
+            nombre = self.nombre.get().strip()
+            # La validación ya confirmó que estos son números válidos
+            precio = float(self.precio.get().strip())
+            stock_actual = int(self.stock.get().strip())
+            stock_mínimo = int(self.stock_mínimo.get().strip())
+            descripción = self.texto_desplazado.get("1.0", tk.END).strip()
+
+            # 3. Crea una lista con los datos del nuevo producto
+            #    (El orden debe coincidir con el de tu tabla en la base de datos)
+            producto = [
+                código,
+                nombre,
+                descripción,
+                precio,
+                stock_actual,
+                stock_mínimo
             ]
-            # Llama a la función para ingresar el movimiento en la base de datos.
-            self.base_de_datos.ingresarMovimiento(movimiento)
-            # Actualiza la interfaz (limpia campos, recarga tabla, recalcula deuda) y respalda la BD.
-            self.actualizarEstadoYRespaldar()
-            if medio != 'Efectivo':
-                self.cargarDatosEnTablaTarjetasEnHilo()
+            
+            try:
+                # 4. Llama a la función para ingresar el producto en la base de datos.
+                self.base_de_datos.ingresarProducto(producto)
+                
+                # 5. Actualiza la interfaz
+                self.limpiarCamposProductos()      # Limpia los campos de entrada
+                self.actualizarTablaProductos()   # Refresca la tabla con el nuevo dato
+                
+                # 6. Respalda la base de datos (como en tus otras funciones)
+                funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+                
+                messagebox.showinfo("Éxito", "Producto añadido correctamente.")
+                
+            except Exception as e:
+                messagebox.showerror("Error de Base de Datos", 
+                                     f"No se pudo añadir el producto: {str(e)}")
 
     def esUnProductoVálido(self):
-        añadir_producto = True  # Asume inicialmente que los datos son válidos.
+        producto_válido = True  # Asume inicialmente que los datos son válidos
+        
+        código = self.código.get().strip()
+        nombre = self.nombre.get().strip()
+        precio_str = self.precio.get().strip()
+        stock_str = self.stock.get().strip()
+        stock_min_str = self.stock_mínimo.get().strip()
 
-        # Verifica que se haya ingresado la cantidad de cuotas, si el campo está habilitado.
-        if self.cant_cuotas.get() == '' and not self.entrada_cantidad_cuotas['state'] == 'disabled':
-            messagebox.showwarning('¡Atención!', 'Debe añadir la cantidad de cuotas')
-            añadir_producto = False
+        # 1. Verifica que se haya ingresado un código
+        if código == '':
+            messagebox.showwarning('¡Atención!', 'Debe ingresar un código para el producto.')
+            self.entrada_código.focus()
+            producto_válido = False
 
-        # Verifica que se haya ingresado un importe y que sea un número decimal válido.
-        if self.importe.get() == '':
-            messagebox.showwarning('¡Atención!', 'Se olvidó de ingresar el importe')
-            añadir_producto = False
+        # 2. Verifica que se haya ingresado un nombre (solo si lo anterior es válido)
+        elif nombre == '':
+            messagebox.showwarning('¡Atención!', 'Debe ingresar un nombre para el producto.')
+            self.entrada_nombre.focus()
+            producto_válido = False
 
-        return añadir_producto  # Devuelve True si todas las validaciones fueron exitosas, False si alguna falló.
+        # 3. Verifica que se haya ingresado un precio (solo si lo anterior es válido)
+        elif precio_str == '':
+            messagebox.showwarning('¡Atención!', 'Debe ingresar un precio para el producto.')
+            self.entrada_precio.focus()
+            producto_válido = False
+
+        # 4. Verifica que se haya ingresado un stock actual (solo si lo anterior es válido)
+        elif stock_str == '':
+            messagebox.showwarning('¡Atención!', 'Debe ingresar el stock actual.')
+            self.entrada_stock.focus()
+            producto_válido = False
+
+        # 5. Verifica que se haya ingresado un stock mínimo (solo si lo anterior es válido)
+        elif stock_min_str == '':
+            messagebox.showwarning('¡Atención!', 'Debe ingresar el stock mínimo.')
+            self.entrada_stock_mínimo.focus()
+            producto_válido = False
+
+        # Devuelve el resultado final de todas las validaciones
+        return producto_válido
     
     def editarProducto(self):
         """
