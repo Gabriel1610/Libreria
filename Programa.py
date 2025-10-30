@@ -66,6 +66,25 @@ PADX_ETIQUETA_STOCK_MÍNIMO_PRODUCTOS = 0
 PADY_ETIQUETA_STOCK_MÍNIMO_PRODUCTOS = 0  # Padding específico para la etiqueta stock mínimo
 PADX_ENTRADA_IZQUIERDA_STOCK_MÍNIMO_PRODUCTOS = (82, 0)
 
+ETIQUETA_DESCRIPCIÓN_TEXTO_PRODUCTOS = "Descripción:"
+
+ANCHO_TEXTO_DESCRIPCIÓN_PRODUCTOS = 30
+ALTO_TEXTO_DESCRIPCIÓN_PRODUCTOS = 7
+WRAP_TEXTO_DESCRIPCIÓN_PRODUCTOS = tk.WORD
+ROWSPAN_TEXTO_DESCRIPCIÓN_PRODUCTOS = 3 # Para abarcar filas 2, 3 y 4
+
+PADX_WIDGETS_DESCRIPCIÓN_PRODUCTOS = (10, 0) # Un padding para separarlo de la Col 0
+PADY_ETIQUETA_DESCRIPCIÓN_PRODUCTOS = 0
+PADY_TEXTO_DESCRIPCIÓN_PRODUCTOS = 5
+STICKY_TEXTO_DESCRIPCIÓN_PRODUCTOS = "nsew" # Que se expanda en su celda
+MÁX_CAR_DESCRIP = 300
+# Máxima cantidad de caracteres permitidos para la descripción de un producto.
+# Se utiliza para limitar la longitud de las descripciones en la interfaz de usuario y en la base de datos.
+
+ADVERTENCIA_CANT_CAR_DESCRIP = 10
+# Cantidad de caracteres restantes en la descripción a partir de la cual se muestra una advertencia al usuario.
+# Sirve para indicar al usuario que está cerca del límite máximo de caracteres permitidos.
+
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
 
@@ -125,6 +144,12 @@ class Aplicación(tk.Tk):
             # y ocupe todo el espacio disponible.
             self.grid_rowconfigure(0, weight=1)
             self.grid_columnconfigure(0, weight=1)
+
+             # --- Configuración de estilos ---
+            self.estilo_apariencia = ttk.Style()  # Crea un objeto de estilo para personalizar la apariencia.
+            self.estilo_apariencia.configure("rojo.TLabel", foreground="red")  # Estilo para texto rojo.
+            self.estilo_apariencia.configure("verde.TLabel", foreground="#37C11E")  # Estilo para texto verde.
+            self.estilo_apariencia.configure("negro.TLabel", foreground="black")  # Estilo para texto negro.
 
             # Crea la página de "Ventas" dentro del cuaderno de productos.
             self.página_cuaderno_ventas = ttk.Frame(self.cuaderno)
@@ -318,10 +343,141 @@ class Aplicación(tk.Tk):
                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
 
+        # --- Descripción (en Columna 1) ---
+        self.etiqueta_descripción = ttk.Label(self.labelframe_productos, 
+                                            text=ETIQUETA_DESCRIPCIÓN_TEXTO_PRODUCTOS)
+        # Etiqueta en Col 1, Fila 0 (para alinear con "Nombre")
+        self.etiqueta_descripción.grid(column=1, row=0, 
+                                    padx=PADX_WIDGETS_DESCRIPCIÓN_PRODUCTOS, 
+                                    pady=PADY_ETIQUETA_DESCRIPCIÓN_PRODUCTOS, 
+                                    sticky=STICKY_WIDGET_OESTE_PRODUCTOS) # Re-usamos "w"
+
+        self.texto_desplazado = st.ScrolledText(self.labelframe_productos, 
+                                                width=ANCHO_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
+                                                height=ALTO_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
+                                                wrap=WRAP_TEXTO_DESCRIPCIÓN_PRODUCTOS)
+
+        # Texto en Col 1, Fila 2, y se expande 3 filas (para alinear con Precio, Stock y Stock Mínimo)
+        self.texto_desplazado.grid(column=1, row=2, 
+                                rowspan=ROWSPAN_TEXTO_DESCRIPCIÓN_PRODUCTOS,
+                                padx=PADX_WIDGETS_DESCRIPCIÓN_PRODUCTOS, 
+                                pady=PADY_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
+                                sticky=STICKY_TEXTO_DESCRIPCIÓN_PRODUCTOS) # "nsew" para que llene
+
+        self.texto_desplazado.bind(EVENTO_TECLA_PRESIONADA, self.limitar_caracteres_descripción)
+
+        # - Etiqueta: contador de caracteres restantes para la descripción.
+        #    - Muestra el número máximo de caracteres permitidos (MÁX_CAR_DESCRIP).
+        #    - Se actualiza dinámicamente con 'self.limitar_caracteres_descripción'.
+        self.etiqueta_contador_caracteres = ttk.Label(self.labelframe_productos, text=str(MÁX_CAR_DESCRIP))
+        self.etiqueta_contador_caracteres.grid(column=1, row=5, padx=(300, 0), pady=(0, 0), sticky="w")
+        self.etiqueta_contador_caracteres.configure(style="verde.TLabel")  # Color verde inicial (suficientes caracteres)
+
         # Bindeo con la constante de evento
         self.entrada_precio.bind(EVENTO_TECLA_PRESIONADA, 
                                 lambda event: funciones_útiles.controlar_caracteres_precio(self.precio, self.entrada_precio, event))  # Validación de entrada
 
+    def actualizar_contador(self, longitud_antes):
+        """
+        Actualiza el contador de caracteres de la descripción y aplica las restricciones correspondientes.
+
+        Esta función se llama después de que se ha modificado el contenido del cuadro de texto de la descripción
+        (ya sea por inserción o eliminación de texto). Calcula la diferencia en la longitud del texto,
+        actualiza el contador y aplica las siguientes reglas:
+
+        1. Límite máximo: Si el número de caracteres supera 'MÁX_CAR_DESCRIP', se trunca a 'MÁX_CAR_DESCRIP'.
+        2. Límite mínimo de caracteres disponibles: Si el número de caracteres disponibles es menor que 0, se establece en 0.
+            Si se excede el límite, se elimina cualquier texto que se haya pegado y exceda el límite.
+        3.  Color del contador:
+            *   Si el número de caracteres es menor que 'ADVERTENCIA_CANT_CAR_DESCRIP', el contador se muestra en rojo.
+                Además, si llega a cero caracteres, muestra un mensaje de advertencia.
+            *   Si el número de caracteres es mayor o igual que 'ADVERTENCIA_CANT_CAR_DESCRIP', el contador se muestra en verde.
+
+        Args:
+            longitud_antes (int): La longitud del texto en el cuadro de descripción *antes* de la modificación.
+
+        """
+        contenido_después = self.texto_desplazado.get("1.0", tk.END)  # Obtiene el texto actual del cuadro.
+        longitud_después = len(contenido_después) - 1  # Calcula la longitud actual (restando el salto de línea final).
+        caracteres_borrados_o_agregados = longitud_antes - longitud_después  # Calcula la diferencia de longitud.
+
+        if caracteres_borrados_o_agregados != 0:  # Si hubo cambios en la longitud.
+            cant_caracteres = int(self.etiqueta_contador_caracteres.cget("text"))  # Obtiene el valor actual del contador.
+            nuevo_valor = cant_caracteres + caracteres_borrados_o_agregados  # Calcula el nuevo valor del contador.
+
+            if nuevo_valor > MÁX_CAR_DESCRIP:  # Si se supera el límite máximo.
+                nuevo_valor = MÁX_CAR_DESCRIP  # Trunca al máximo.
+                self.botón_añadir_a_favoritos.config(state = 'disabled') #Deshabilita el botón de añadir a favoritos
+            if nuevo_valor < 0:  # Si el valor es negativo.
+                nuevo_valor = 0  # Establece en 0.
+                self.texto_desplazado.delete("1.0", tk.END)  # Borra todo el contenido.
+                self.texto_desplazado.insert("1.0", contenido_después[:MÁX_CAR_DESCRIP])  # Inserta el contenido truncado.
+
+            self.etiqueta_contador_caracteres.config(text=str(nuevo_valor))  # Actualiza el contador en la interfaz.
+
+            # Actualizar color
+            if nuevo_valor <= ADVERTENCIA_CANT_CAR_DESCRIP:  # Si está por debajo del umbral de advertencia.
+                self.etiqueta_contador_caracteres.configure(style="rojo.TLabel")  # Cambia el color a rojo.
+                if nuevo_valor <= 0:  # Si llega a 0.
+                    messagebox.showwarning("Advertencia", "Ha alcanzado el límite de caracteres.")  # Muestra advertencia.
+            else:  # Si está por encima o igual al umbral de advertencia.
+                self.etiqueta_contador_caracteres.configure(style="verde.TLabel")  # Cambia el color a verde.
+
+    def limitar_caracteres_descripción(self, event = None):
+        """
+        Limita la cantidad de caracteres que se pueden ingresar en el cuadro de texto de la descripción.
+
+        Esta función se vincula al evento 'KeyPress' del cuadro de texto de la descripción ('self.texto_desplazado').
+        Controla qué teclas se pueden presionar y cómo se procesan, para asegurar que no se exceda el límite
+        de caracteres y para actualizar el contador de caracteres en tiempo real.
+
+        Args:
+            event (tkinter.Event, optional): El objeto de evento de Tkinter que contiene información sobre la tecla presionada.
+                Defaults to None.
+
+        Returns:
+            str or None:  Retorna "break" para evitar que el evento se propague más (en algunos casos), o None para
+            permitir el procesamiento normal del evento.
+
+        """
+        retornar = "break"  # Valor predeterminado para evitar la propagación del evento.
+        tecla = event.char  # Obtiene el carácter real generado por la tecla presionada
+        #  Verifica si es un carácter imprimible
+        es_carácter_válido = len(tecla) == 1 and tecla.isprintable()
+        tecla_símbolo = event.keysym  # Obtiene la tecla presionada
+        #  Verifica si la tecla es BackSpace, Ctrl+X, Ctrl+V, o un carácter ASCII válido.
+        if event and event.keysym == 'BackSpace' or (event.state & 0x0004) and (tecla_símbolo.lower() == 'x' or tecla_símbolo.lower() == 'v') or es_carácter_válido and ord(tecla) >= 32 and ord(tecla) <= 254 or tecla_símbolo in ('Delete'):
+            # Guardar contenido antes del borrado o pegado.
+            contenido_antes = self.texto_desplazado.get("1.0", tk.END)  # Obtiene el contenido actual.
+            longitud_antes = len(contenido_antes) - 1  # Calcula la longitud (sin el salto de línea final).
+
+            # Permitir que el evento Backspace, Ctrl+X o Ctrl+V se procese.
+            retornar = None
+
+            # Ejecutar después de que el evento se procese (usando after_idle para asegurar que el texto se haya actualizado).
+            self.texto_desplazado.after_idle(functools.partial(self.actualizar_contador, longitud_antes))
+        elif (event.state & 0x0004) and len(tecla_símbolo) == 1 and tecla_símbolo.isalpha():
+            # Si se presiona Ctrl + una letra (excepto Ctrl+X o Ctrl+V, que ya se manejan antes),
+            # se permite el evento para no bloquear atajos de teclado comunes.
+            # Además, se habilita el botón de añadir a favoritos para indicar que puede usarse.
+            retornar = None
+            self.botón_añadir_a_favoritos.config(state = 'normal') #Habilita el botón de añadir a favoritos
+        elif tecla_símbolo in ('Left', 'Right') and self.texto_desplazado.tag_ranges("sel") and not (event.state & 0x0001):
+            # Si se presionan las teclas de flecha izquierda o derecha,
+            # y hay texto seleccionado (tag "sel" activo),
+            # y no se está presionando Shift (para evitar interferir con selección múltiple),
+            # se mueve el cursor al inicio o al final de la selección según la flecha,
+            # y se elimina la selección para que solo quede el cursor en esa posición.
+            if tecla_símbolo == 'Left':
+                self.texto_desplazado.mark_set("insert", "sel.first")
+            else:
+                self.texto_desplazado.mark_set("insert", "sel.last")
+            self.texto_desplazado.tag_remove("sel", "1.0", "end")
+        elif tecla_símbolo != 'Return':
+            # Para cualquier otra tecla diferente de Enter, no hacer nada.
+            retornar = None
+        return retornar
+    
     def controlar_caracteres_stock(self, event = None):
         retornar = "break"  # Valor por defecto: evita la inserción del carácter.
         carácter = event.char  # Obtiene el carácter individual ingresado.
