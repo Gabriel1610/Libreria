@@ -71,7 +71,7 @@ ETIQUETA_DESCRIPCIÓN_TEXTO_PRODUCTOS = "Descripción:"
 ANCHO_TEXTO_DESCRIPCIÓN_PRODUCTOS = 30
 ALTO_TEXTO_DESCRIPCIÓN_PRODUCTOS = 7
 WRAP_TEXTO_DESCRIPCIÓN_PRODUCTOS = tk.WORD
-ROWSPAN_TEXTO_DESCRIPCIÓN_PRODUCTOS = 3 # Para abarcar filas 2, 3 y 4
+FILASPAN_TEXTO_DESCRIPCIÓN_PRODUCTOS = 4 # Para abarcar filas 1, 2, 3 y 4
 
 PADX_WIDGETS_DESCRIPCIÓN_PRODUCTOS = (10, 0) # Un padding para separarlo de la Col 0
 PADY_ETIQUETA_DESCRIPCIÓN_PRODUCTOS = 0
@@ -84,6 +84,28 @@ MÁX_CAR_DESCRIP = 300
 ADVERTENCIA_CANT_CAR_DESCRIP = 10
 # Cantidad de caracteres restantes en la descripción a partir de la cual se muestra una advertencia al usuario.
 # Sirve para indicar al usuario que está cerca del límite máximo de caracteres permitidos.
+
+ETIQUETA_CÓDIGO_TEXTO_PRODUCTOS = "Código:"
+ANCHO_ENTRADA_CÓDIGO_PRODUCTOS = 30  # Puedes ajustar este ancho
+PADX_ETIQUETA_CÓDIGO_PRODUCTOS = 0
+# Reutilizamos el padding izquierdo de "Nombre" para que se alinee
+PADX_ENTRADA_IZQUIERDA_CÓDIGO_PRODUCTOS = PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS
+
+# (Constantes anteriores...)
+
+# --- Constantes para Botones de Productos ---
+TEXTO_BOTÓN_AÑADIR_PRODUCTOS = "Añadir"
+TEXTO_BOTÓN_EDITAR_PRODUCTOS = "Editar"
+TEXTO_BOTÓN_ELIMINAR_PRODUCTOS = "Eliminar"
+TEXTO_BOTÓN_LIMPIAR_PRODUCTOS = "Limpiar"
+
+# Padding (horizontal) para los botones en la fila 6.
+# Ajusta estos valores numéricos (85, 170, 255)
+# para que coincidan con el espaciado que deseas.
+PADX_BOTÓN_AÑADIR_PRODUCTOS = (0, 0)
+PADX_BOTÓN_EDITAR_PRODUCTOS = (85, 0)
+PADX_BOTÓN_ELIMINAR_PRODUCTOS = (170, 0)
+PADX_BOTÓN_LIMPIAR_PRODUCTOS = (255, 0)
 
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
@@ -281,9 +303,24 @@ class Aplicación(tk.Tk):
                                     pady=PADY_ETIQUETA_NOMBRE_PRODUCTOS,
                                     sticky=STICKY_LABELFRAME_PRODUCTOS)
 
+        # --- CÓDIGO (NUEVO) --- (Fila 0)
+        self.etiqueta_código = ttk.Label(self.labelframe_productos, text=ETIQUETA_CÓDIGO_TEXTO_PRODUCTOS)
+        self.etiqueta_código.grid(column=0, row=0, 
+                                padx=PADX_ETIQUETA_CÓDIGO_PRODUCTOS, 
+                                pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        self.código = tk.StringVar()
+        self.entrada_código = tk.Entry(self.labelframe_productos, 
+                                    width=ANCHO_ENTRADA_CÓDIGO_PRODUCTOS, 
+                                    textvariable=self.código)
+        self.entrada_código.grid(column=0, row=0, 
+                                padx=PADX_ENTRADA_IZQUIERDA_CÓDIGO_PRODUCTOS, 
+                                pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
         # --- Nombre ---
         self.etiqueta_nombre = ttk.Label(self.labelframe_productos, text=ETIQUETA_NOMBRE_TEXTO_PRODUCTOS)
-        self.etiqueta_nombre.grid(column=0, row=0, 
+        self.etiqueta_nombre.grid(column=0, row=1, 
                                 padx=PADX_ETIQUETA_NOMBRE_PRODUCTOS, 
                                 pady=PADY_ETIQUETA_NOMBRE_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
@@ -291,7 +328,7 @@ class Aplicación(tk.Tk):
         self.entrada_nombre = tk.Entry(self.labelframe_productos, 
                                     width=ANCHO_ENTRADA_NOMBRE_PRODUCTOS, 
                                     textvariable=self.nombre)
-        self.entrada_nombre.grid(column=0, row=0, 
+        self.entrada_nombre.grid(column=0, row=1, 
                                 padx=PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS, 
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
@@ -310,6 +347,10 @@ class Aplicación(tk.Tk):
                                 padx=PADX_ENTRADA_IZQUIERDA_PRECIO_PRODUCTOS, 
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
+        # Bindeo con la constante de evento
+        self.entrada_precio.bind(EVENTO_TECLA_PRESIONADA, 
+                                lambda event: funciones_útiles.controlar_caracteres_precio(self.precio, self.entrada_precio, event))  # Validación de entrada
 
         # --- Stock Actual ---
         self.etiqueta_stock = ttk.Label(self.labelframe_productos, text=ETIQUETA_STOCK_ACTUAL_TEXTO_PRODUCTOS)
@@ -358,8 +399,8 @@ class Aplicación(tk.Tk):
                                                 wrap=WRAP_TEXTO_DESCRIPCIÓN_PRODUCTOS)
 
         # Texto en Col 1, Fila 2, y se expande 3 filas (para alinear con Precio, Stock y Stock Mínimo)
-        self.texto_desplazado.grid(column=1, row=2, 
-                                rowspan=ROWSPAN_TEXTO_DESCRIPCIÓN_PRODUCTOS,
+        self.texto_desplazado.grid(column=1, row=1, 
+                                rowspan=FILASPAN_TEXTO_DESCRIPCIÓN_PRODUCTOS,
                                 padx=PADX_WIDGETS_DESCRIPCIÓN_PRODUCTOS, 
                                 pady=PADY_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
                                 sticky=STICKY_TEXTO_DESCRIPCIÓN_PRODUCTOS) # "nsew" para que llene
@@ -373,9 +414,185 @@ class Aplicación(tk.Tk):
         self.etiqueta_contador_caracteres.grid(column=1, row=5, padx=(300, 0), pady=(0, 0), sticky="w")
         self.etiqueta_contador_caracteres.configure(style="verde.TLabel")  # Color verde inicial (suficientes caracteres)
 
-        # Bindeo con la constante de evento
-        self.entrada_precio.bind(EVENTO_TECLA_PRESIONADA, 
-                                lambda event: funciones_útiles.controlar_caracteres_precio(self.precio, self.entrada_precio, event))  # Validación de entrada
+        # --- Botones: Añadir, Editar, Eliminar, Limpiar --- (Fila 6)
+
+        # --- Botón Añadir ---
+        self.botón_añadir_productos = ttk.Button(self.labelframe_productos, 
+                                                 text=TEXTO_BOTÓN_AÑADIR_PRODUCTOS, 
+                                                 command=self.añadirProducto)
+        self.botón_añadir_productos.grid(column=0, row=6, 
+                                         padx=PADX_BOTÓN_AÑADIR_PRODUCTOS, 
+                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, # Reutilizamos constante
+                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS) # Reutilizamos constante
+
+        
+        # --- Botón Editar ---
+        self.botón_editar_productos = ttk.Button(self.labelframe_productos, 
+                                                 text=TEXTO_BOTÓN_EDITAR_PRODUCTOS, 
+                                                 command=self.editarProducto) # (Asumo que la función se llama así)
+        self.botón_editar_productos.grid(column=0, row=6, 
+                                         padx=PADX_BOTÓN_EDITAR_PRODUCTOS, 
+                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        
+        # --- Botón Eliminar ---
+        self.botón_eliminar_productos = ttk.Button(self.labelframe_productos, 
+                                                   text=TEXTO_BOTÓN_ELIMINAR_PRODUCTOS, 
+                                                   command=self.eliminarProducto) # (Asumo que la función se llama así)
+        self.botón_eliminar_productos.grid(column=0, row=6, 
+                                           padx=PADX_BOTÓN_ELIMINAR_PRODUCTOS, 
+                                           pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                           sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        
+        # --- Botón Limpiar ---
+        self.botón_limpiar_productos = ttk.Button(self.labelframe_productos, 
+                                                  text=TEXTO_BOTÓN_LIMPIAR_PRODUCTOS, 
+                                                  command=self.limpiarCamposProductos) # (Asumo que la función se llama así)
+        self.botón_limpiar_productos.grid(column=0, row=6, 
+                                          padx=PADX_BOTÓN_LIMPIAR_PRODUCTOS, 
+                                          pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                          sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
+    def añadirProducto(self):
+        if self.esUnProductoVálido():  # Verifica si los datos ingresados son válidos.
+            nombre = self.nombre.get()  # Obtiene el nombre del producto.
+            precio = float(self.precio.get())  # Obtiene el precio como float.
+            categoria = self.categoria.get()  # Obtiene la categoría.
+            stock = int(self.stock.get())  # Obtiene el stock como entero.
+            es_deuda = self.tipo_movimiento.get() % 2  # Determina si es deuda (1) o haber (0).
+            medio = self.medio.get()  # Obtiene el medio de pago.
+            cantidad_de_cuotas = 1  # Valor por defecto para la cantidad de cuotas.
+            if self.cant_cuotas.get() != '':  # Si se especificó la cantidad de cuotas...
+                cantidad_de_cuotas = int(self.cant_cuotas.get())  # ...la obtiene como entero.
+            la_descripción = self.texto_desplazado.get("1.0", tk.END).rstrip('\n')  # Obtiene la descripción.
+            # Crea una lista con los datos del nuevo movimiento.
+            movimiento = [
+                fecha_string,
+                importe,
+                es_deuda,
+                en_dólares,
+                medio,
+                la_descripción,
+                cantidad_de_cuotas
+            ]
+            # Llama a la función para ingresar el movimiento en la base de datos.
+            self.base_de_datos.ingresarMovimiento(movimiento)
+            # Actualiza la interfaz (limpia campos, recarga tabla, recalcula deuda) y respalda la BD.
+            self.actualizarEstadoYRespaldar()
+            if medio != 'Efectivo':
+                self.cargarDatosEnTablaTarjetasEnHilo()
+
+    def esUnProductoVálido(self):
+        añadir_producto = True  # Asume inicialmente que los datos son válidos.
+
+        # Verifica que se haya ingresado la cantidad de cuotas, si el campo está habilitado.
+        if self.cant_cuotas.get() == '' and not self.entrada_cantidad_cuotas['state'] == 'disabled':
+            messagebox.showwarning('¡Atención!', 'Debe añadir la cantidad de cuotas')
+            añadir_producto = False
+
+        # Verifica que se haya ingresado un importe y que sea un número decimal válido.
+        if self.importe.get() == '':
+            messagebox.showwarning('¡Atención!', 'Se olvidó de ingresar el importe')
+            añadir_producto = False
+
+        return añadir_producto  # Devuelve True si todas las validaciones fueron exitosas, False si alguna falló.
+    
+    def editarProducto(self):
+        """
+        Edita un movimiento existente en la base de datos si la entrada es válida.
+
+        Esta función se ejecuta cuando el usuario hace clic en el botón "Editar".
+        Realiza las siguientes acciones:
+
+        1. Obtiene el ítem seleccionado de la tabla de movimientos.
+        2. Verifica si hay un ítem seleccionado y si los datos ingresados son válidos llamando a 'esUnMovimientoVálido()'.
+        3. Si se cumplen ambas condiciones:
+           - Obtiene la fecha del calendario y la formatea como 'YYYY-MM-DD'.
+           - Crea una lista 'valores' para almacenar los nuevos valores del movimiento.
+           - Agrega la fecha formateada a la lista 'valores'.
+           - Agrega el importe a la lista 'valores'.
+           - Determina si el movimiento es en dólares (1) o pesos (0) y lo agrega a 'valores'.
+           - Determina si es deuda (1) o haber (0) y lo agrega a 'valores'.
+           - Agrega el medio de pago a 'valores'.
+           - Agrega la descripción (eliminando saltos de línea al final) a 'valores'.
+           - Obtiene la cantidad de cuotas (por defecto es 1 si no se especifica) y la agrega a 'valores'.
+           - Agrega el código único del movimiento original (obtenido de 'datos[ÍNDICE_CÓD_MOV]') a 'valores'.  Esto es crucial
+             para identificar el movimiento que se va a editar.
+           - Llama a 'modificarUnMovimiento' en la base de datos para actualizar el movimiento.
+           - Finalmente, actualiza el estado de la interfaz y respalda la base de datos.
+        
+        valores = []  # Lista para almacenar los nuevos valores del movimiento.
+        item_seleccionado = self.tabla_movimientos.focus()  # Obtiene el ítem seleccionado.
+        datos = self.tabla_movimientos.item(item_seleccionado)['values']  # Obtiene los valores del ítem.
+        if item_seleccionado and self.esUnMovimientoVálido():  # Verifica selección y validez.
+            fecha_date = datetime.strptime(self.calendario_fecha.get_date(), FORMATO_FECHA_CALENDAR).date()  # Obtiene la fecha.
+            fecha = fecha_date.strftime(FORMATO_FECHA_BD)  # Formatea la fecha.
+            valores.append(fecha)  # Agrega la fecha a la lista de valores.
+            valores.append(self.importe.get())  # Agrega el importe.
+            valores.append(0)  # Valor por defecto para 'en_dólares'.
+            if self.tipo_moneda.get() == 2:  # Si es en dólares...
+                valores[-1] = 1  # ...cambia el valor a 1.
+            valores.append(1)  # Valor por defecto para 'es_deuda'.
+            if self.tipo_movimiento.get() == 2:  # Si es haber...
+                valores[-1] = 0  # ...cambia el valor a 0.
+            medio_pago = self.medio.get()  # Obtiene el medio de pago.
+            valores.append(medio_pago)  # Agrega el medio de pago.
+            valores.append(self.texto_desplazado.get('1.0', tk.END).rstrip())  # Agrega la descripción.
+            cuotas_totales = 1  # Valor por defecto para cuotas totales.
+            cuotas_totales_cuadro_texto = self.cant_cuotas.get()  # Obtiene cuotas del cuadro de texto.
+            if cuotas_totales_cuadro_texto != '':  # Si se especificó un valor...
+                cuotas_totales = int(cuotas_totales_cuadro_texto)  # ...lo usa.
+            # else:  # Este 'else' es redundante, ya que cuotas_totales ya tiene el valor por defecto.
+            #     cuotas_totales = 1
+            valores.append(cuotas_totales)  # Agrega la cantidad de cuotas.
+            valores.append(datos[ÍNDICE_CÓD_MOV_TABLA])  # Agrega el código único del movimiento original.
+            self.base_de_datos.modificarUnMovimiento(valores)  # Modifica el movimiento en la base de datos.
+            # Actualiza la interfaz (limpia campos, recarga tabla, recalcula deuda) y respalda la BD.
+            self.actualizarEstadoYRespaldar()
+            self.cargarDatosEnTablaEnHilo()
+            self.cargarDatosEnTablaTarjetasEnHilo()"""
+
+    def eliminarProducto(self):
+        """
+        Elimina el movimiento seleccionado de la base de datos y actualiza la interfaz.
+
+        Esta función se ejecuta cuando el usuario hace clic en el botón "Eliminar".
+        Realiza las siguientes acciones:
+
+        1. Obtiene el ítem seleccionado de la tabla de movimientos.
+        2. Si hay un ítem seleccionado:
+           - Extrae los datos del ítem, incluyendo su código único (que está en la posición 9 de la lista 'values').
+           - Llama a la función 'eliminarMovimientoPorCódigo' de la base de datos para eliminar el movimiento.
+           - Llama a la función 'limpiar' para limpiar los campos de entrada.
+           - Llama a la función 'crearHiloRespaldarBaseDeDatos' para crear un hilo que respalde la base de datos.
+           - Establece 'self.cambiar_deuda_dólar' en 'True' para indicar que la deuda en dólares debe ser recalculada.
+           - Llama a 'self.actualizarAdvertenciaDeActualizaciónDeDeuda' para actualizar la advertencia sobre la actualización del precio del dólar
+           y que así el usuario sepa que el monto que está viendo puede no ser el real y presione en "Calcular" si quiere ver el verdadero.
+           - Llama a 'self.cargarDatosEnTablaEnHilo' para recargar los datos en la tabla (en un hilo separado).
+        
+        item_seleccionado = self.tabla_movimientos.focus()  # Obtiene el ítem seleccionado de la tabla.
+        datos = self.tabla_movimientos.item(item_seleccionado)['values'] #Obtiene los valores del item seleccionado
+        if item_seleccionado:  # Verifica si hay un ítem seleccionado.
+            self.base_de_datos.eliminarMovimientoPorCódigo([datos[ÍNDICE_CÓD_MOV_TABLA]]) # Elimina el movimiento de la base de datos.
+            self.limpiar()  # Limpia los campos de entrada.
+            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)  # Respalda la base de datos (en un hilo).
+            self.cambiar_deuda_dólar = True  # Indica que se debe recalcular la deuda en dólares.
+            self.actualizarAdvertenciaDeActualizaciónDeDeuda()  # Actualiza la advertencia sobre el precio del dólar.
+            self.cargarDatosEnTablaEnHilo()  # Recarga los datos en la tabla (en un hilo).
+            if datos[ÍNDICE_NOMBRE_MEDIO_PAGO_TABLA] != 'Efectivo':
+                self.cargarDatosEnTablaTarjetasEnHilo()"""
+    
+    def limpiarCamposProductos(self):
+        self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.
+        self.precio.set('')  # Limpia el campo de importe.
+        self.entrada_stock.delete(0, "end")
+        self.botón_editar_productos.config(state='disabled')  # Deshabilita el botón "Editar".
+        self.botón_eliminar_productos.config(state='disabled')  # Deshabilita el botón "Eliminar".
+        self.botón_limpiar_productos.config(state="disabled")  # Deshabilita el botón "Limpiar".
+        self.tabla_productos.selection_set(()) # Deselecciona la tabla
+        self.etiqueta_contador_caracteres.config(text=str(MÁX_CAR_DESCRIP)) # actualiza la cantidad de caracteres restantes
+        # cambia a verde el color de la etiqueta de los caracteres restantes
+        self.etiqueta_contador_caracteres.configure(style="verde.TLabel")
 
     def actualizar_contador(self, longitud_antes):
         """
