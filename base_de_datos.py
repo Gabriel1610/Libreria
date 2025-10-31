@@ -153,6 +153,62 @@ class BaseDeDatos:
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
 
+    def consultarDatosProductos(self):
+        """
+        Consulta y devuelve todos los productos de la tabla PRODUCTO.
+
+        Los datos se devuelven en el orden esperado por el Treeview de la UI:
+        (codigo, nombre, precio_venta, stock_actual, stock_minimo, descripcion)
+
+        Returns:
+            list: Una lista de tuplas, donde cada tupla es un producto.
+                  Retorna None si ocurre un error.
+        """
+        logger = logging.getLogger(__name__)
+        conexión = None
+        cursor = None
+        
+        try:
+            # 1. Abre la conexión a la base de datos
+            conexión = self.abrir()
+            cursor = conexión.cursor()
+            
+            # 2. Base de la consulta SQL
+            # Seleccionamos las columnas en el orden que espera la tabla (Treeview)
+            # (Según tu función crearTablaConProductos, el precio va antes del stock)
+            consulta = """SELECT codigo, 
+                                 nombre, 
+                                 precio_venta, 
+                                 stock_actual, 
+                                 stock_minimo, 
+                                 descripcion
+                          FROM PRODUCTO
+                          ORDER BY nombre; 
+                       """
+            
+            # 3. Ejecución de la consulta
+            cursor.execute(consulta)
+            filas = cursor.fetchall()
+            logger.info(f"Se consultaron {len(filas)} productos de la base de datos.")
+            return filas
+        
+        except mysql.connector.Error as err:
+            logger.exception("Error de MySQL al consultar los productos:")
+            return None
+        except Exception as e:
+            # 4. Manejo de excepciones
+            logger.exception(f"Error inesperado al consultar productos: {e}")
+            return None
+
+        finally:
+            # 5. Asegura que la conexión se cierre
+            if cursor:
+                cursor.close()
+                logger.debug("Cursor cerrado.")
+            if 'conexión' in locals() and conexión and conexión.is_connected():
+                conexión.close()
+                logger.info("Conexión a la base de datos cerrada.")
+                
     # Respaldar una base de datos MySQL usando Python
     def respaldarBaseDeDatos(self, ubicación_respaldo):
         config = self.obtener_configuración()

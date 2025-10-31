@@ -144,9 +144,6 @@ class Aplicación(tk.Tk):
             self.base_de_datos = base_de_datos.BaseDeDatos()  # Crea una instancia de la clase BaseDeDatos.
             self.hilos = []  # Lista para almacenar los hilos que se creen.
             self.evento_cancelar = threading.Event()  # Evento para cancelar hilos.
-
-            # Carga los datos en la tabla productos (en un hilo separado).
-            self.cargarDatosEnTablaEnHilo()
             
         #Crea un widget Notebook, que permite tener varias pestañas
             self.cuaderno = ttk.Notebook(self)  
@@ -195,6 +192,9 @@ class Aplicación(tk.Tk):
 
             # Configura la función que se ejecutará cuando se cierre la ventana.
             self.protocol("WM_DELETE_WINDOW", self.cerrarVentana)
+
+            # Carga los datos en la tabla productos (en un hilo separado).
+            self.cargarDatosEnTablaEnHilo()
 
         except Exception as e:
             messagebox.showerror("Error crítico", f"Fallo en inicialización: {str(e)}")
@@ -554,25 +554,11 @@ class Aplicación(tk.Tk):
 
         """
         funciones_útiles.borrarTodasLasFilas(self.tabla_productos)  # Elimina todas las filas existentes de la tabla.
-        self.cargarTabla()  # Carga los datos en la tabla (desde 'self.datos').
+        self.datos = self.base_de_datos.consultarDatosProductos()  # Obtiene los datos actualizados de la base de datos.
+        self.cargarTablaProducto()  # Carga los datos en la tabla (desde 'self.datos').
 
-    def cargarTabla(self):
-        """
-        Carga los datos de los movimientos (almacenados en self.datos) en la tabla de la interfaz.
-
-        Aplica formato condicional (colores) a las filas según si son deuda o haber.
-        Formatea las fechas y montos para su correcta visualización.
-
-        Itera sobre cada movimiento en self.datos:
-            - Extrae y formatea la fecha, el monto, el medio de pago, las cuotas, etc.
-            - Maneja los casos especiales de fechas de vencimiento nulas o 'todo pagado'.
-            - Determina si el movimiento es en pesos o dólares.
-            - Inserta la fila en la tabla con la etiqueta 'deuda' o 'haber'.
+    def cargarTablaProducto(self):
         
-        # Configura el color de fondo para las filas con etiqueta "deuda" (rojo).
-        self.tabla_movimientos.tag_configure("deuda", background="red")
-        # Configura el color de fondo para las filas con etiqueta "haber" (verde).
-        self.tabla_movimientos.tag_configure("haber", background="#37C11E")
         # Inicializa la lista 'valores' que contendrá los datos de cada fila.
         valores = []
 
@@ -608,9 +594,9 @@ class Aplicación(tk.Tk):
 
             # Inserta la fila en la tabla.  Aplica la etiqueta "deuda" o "haber".
             if dato[ÍNDICE_INDICADOR_DEUDA_HABER_BD]:
-                self.tabla_movimientos.insert('', tk.END, values=valores, tag="deuda")
+                self.tabla_movimientos.insert('', tk.END, values=valores)
             else:
-                self.tabla_movimientos.insert('', tk.END, values=valores, tag="haber")"""
+                self.tabla_movimientos.insert('', tk.END, values=valores)
 
     def cargarDatosEnTablaEnHilo(self):
         def cargar_datos():
