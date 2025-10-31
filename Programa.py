@@ -292,7 +292,7 @@ class Aplicación(tk.Tk):
         self.barra_desplazamiento_vertical.grid(row=0, column=2, sticky='ns')
         self.barra_desplazamiento_horizontal.grid(row=1, column=0, columnspan=2, sticky='we')
 
-        # self.tabla_productos.bind("<<TreeviewSelect>>", self.cargarRegistros)
+        self.tabla_productos.bind("<<TreeviewSelect>>", self.cargarRegistros)
     
     def crearLabelFrameProductos(self):
         # --- Creación de Widgets ---
@@ -463,43 +463,46 @@ class Aplicación(tk.Tk):
         Valida los campos de entrada y añade el nuevo producto a la base de datos.
         """
         if self.esUnProductoVálido():  # 1. Verifica si los datos ingresados son válidos.
-            
-            # 2. Obtiene los datos de los widgets de entrada
+            # 2. Obtiene el código del producto
             código = self.código.get().strip()
-            nombre = self.nombre.get().strip()
-            # La validación ya confirmó que estos son números válidos
-            precio = float(self.precio.get().strip())
-            stock_actual = int(self.stock.get().strip())
-            stock_mínimo = int(self.stock_mínimo.get().strip())
-            descripción = self.texto_desplazado.get("1.0", tk.END).strip()
+            if self.base_de_datos.buscarProductoPorCódigo(código):
+                messagebox.showwarning("¡Atención!", "Ya existe un producto con ese código.")
+            else:
+                # 3. Obtiene el resto de los datos de los widgets de entrada
+                nombre = self.nombre.get().strip()
+                # La validación ya confirmó que estos son números válidos
+                precio = float(self.precio.get().strip())
+                stock_actual = int(self.stock.get().strip())
+                stock_mínimo = int(self.stock_mínimo.get().strip())
+                descripción = self.texto_desplazado.get("1.0", tk.END).strip()
 
-            # 3. Crea una lista con los datos del nuevo producto
-            #    (El orden debe coincidir con el de tu tabla en la base de datos)
-            producto = [
-                código,
-                nombre,
-                descripción,
-                precio,
-                stock_actual,
-                stock_mínimo
-            ]
-            
-            try:
-                # 4. Llama a la función para ingresar el producto en la base de datos.
-                self.base_de_datos.ingresarProducto(producto)
+                # 4. Crea una lista con los datos del nuevo producto
+                #    (El orden debe coincidir con el de tu tabla en la base de datos)
+                producto = [
+                    código,
+                    nombre,
+                    descripción,
+                    precio,
+                    stock_actual,
+                    stock_mínimo
+                ]
                 
-                # 5. Actualiza la interfaz
-                self.limpiarCamposProductos()      # Limpia los campos de entrada
-                self.actualizarTablaProductos()   # Refresca la tabla con el nuevo dato
-                
-                # 6. Respalda la base de datos (como en tus otras funciones)
-                funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
-                
-                messagebox.showinfo("Éxito", "Producto añadido correctamente.")
-                
-            except Exception as e:
-                messagebox.showerror("Error de Base de Datos", 
-                                     f"No se pudo añadir el producto: {str(e)}")
+                try:
+                    # 5. Llama a la función para ingresar el producto en la base de datos.
+                    self.base_de_datos.ingresarProducto(producto)
+                    
+                    # 6. Actualiza la interfaz
+                    self.limpiarCamposProductos()      # Limpia los campos de entrada
+                    self.actualizarTablaProductos()   # Refresca la tabla con el nuevo dato
+
+                    # 7. Respalda la base de datos (como en tus otras funciones)
+                    funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+                    
+                    messagebox.showinfo("Éxito", "Producto añadido correctamente.")
+                    
+                except Exception as e:
+                    messagebox.showerror("Error de Base de Datos", 
+                                        f"No se pudo añadir el producto: {str(e)}")
 
     def esUnProductoVálido(self):
         producto_válido = True  # Asume inicialmente que los datos son válidos
@@ -517,25 +520,25 @@ class Aplicación(tk.Tk):
             producto_válido = False
 
         # 2. Verifica que se haya ingresado un nombre (solo si lo anterior es válido)
-        elif nombre == '':
+        if nombre == '':
             messagebox.showwarning('¡Atención!', 'Debe ingresar un nombre para el producto.')
             self.entrada_nombre.focus()
             producto_válido = False
 
         # 3. Verifica que se haya ingresado un precio (solo si lo anterior es válido)
-        elif precio_str == '':
+        if precio_str == '':
             messagebox.showwarning('¡Atención!', 'Debe ingresar un precio para el producto.')
             self.entrada_precio.focus()
             producto_válido = False
 
         # 4. Verifica que se haya ingresado un stock actual (solo si lo anterior es válido)
-        elif stock_str == '':
+        if stock_str == '':
             messagebox.showwarning('¡Atención!', 'Debe ingresar el stock actual.')
             self.entrada_stock.focus()
             producto_válido = False
 
         # 5. Verifica que se haya ingresado un stock mínimo (solo si lo anterior es válido)
-        elif stock_min_str == '':
+        if stock_min_str == '':
             messagebox.showwarning('¡Atención!', 'Debe ingresar el stock mínimo.')
             self.entrada_stock_mínimo.focus()
             producto_válido = False
@@ -559,54 +562,27 @@ class Aplicación(tk.Tk):
 
     def cargarTablaProducto(self):
         
-        # Inicializa la lista 'valores' que contendrá los datos de cada fila.
-        valores = []
-
-        for dato in self.datos:  # Itera sobre cada movimiento en self.datos.
-            # Crea una lista con: Fecha (formateada), Monto absoluto (formateado a 2 decimales),
-            # un guión para la columna de "haber" o "debe", y el Medio de Pago.
-            valores = [dato[ÍNDICE_FECHA_COMPRA_BD].strftime(FORMATO_PREFERIDO_FECHA), f"{math.fabs(float(dato[ÍNDICE_IMPORTE_TOTAL_BD])):.2f}", '-', f"{math.fabs(float(dato[ÍNDICE_IMPORTE_CUOTAS_BD])):.2f}", dato[ÍNDICE_NOMBRE_MEDIO_PAGO_BD]]
-
-            if dato[ÍNDICE_NOMBRE_MEDIO_PAGO_BD] == 'Efectivo':
-                valores.append('-')  # Si es efectivo, agrega un guión en la columna de cuotas.
-            else:
-                valores.append(dato[ÍNDICE_CUOTAS_BD])  # Si no, agrega el valor de las cuotas.
-
-            # Manejo de la columna 'Vencimiento':
-            if dato[ÍNDICE_PRÓX_VENC_BD] is None:
-                valores.append('no hay')  # Si no hay fecha de vencimiento, pone "no hay".
-            elif dato[ÍNDICE_PRÓX_VENC_BD] not in ('-', 'todo pagado', 'faltante'):
-                # Si hay una fecha válida, la formatea a dd/mm/aaaa.
-                valores.append(datetime.strptime(dato[ÍNDICE_PRÓX_VENC_BD], FORMATO_FECHA_BD).date().strftime(FORMATO_PREFERIDO_FECHA))
-            else:
-                valores.append(dato[ÍNDICE_PRÓX_VENC_BD])  # Si es '-' o 'todo pagado', lo agrega tal cual.
-
-            valores.append(dato[ÍNDICE_DESCRIPCIÓN_BD])  # Agrega la descripción.
-            valores.append('pesos')  # Agrega 'pesos' por defecto.
-
-            # Si dato[ÍNDICE_EN_DÓLARES_BD] es True, significa que es un movimiento en dólares.
-            if dato[ÍNDICE_EN_DÓLARES_BD]:
-                valores[ÍNDICE_IMPORTE_DÓLARES_TABLA] = valores[ÍNDICE_IMPORTE_PESOS_TABLA]  # Intercambia "Debe" y "Haber".
-                valores[ÍNDICE_IMPORTE_PESOS_TABLA] = '-'
-                valores[-1] = 'dólares'  # Cambia la moneda a 'dólares'.
-
-            valores.append(dato[ÍNDICE_CÓD_MOV_BD]) # Agrega el código del movimiento
-
-            # Inserta la fila en la tabla.  Aplica la etiqueta "deuda" o "haber".
-            if dato[ÍNDICE_INDICADOR_DEUDA_HABER_BD]:
-                self.tabla_movimientos.insert('', tk.END, values=valores)
-            else:
-                self.tabla_movimientos.insert('', tk.END, values=valores)
+        """
+        Carga los datos de los productos (almacenados en self.datos) 
+        en la tabla (Treeview) de la interfaz.
+        """
+        
+        # Verifica que self.datos no esté vacío o sea None
+        if self.datos: 
+            for producto in self.datos:
+                # 'producto' es una tupla que se asume está en el orden:
+                # (codigo, nombre, precio, stock_actual, stock_minimo, descripcion)
+                # Este orden debe coincidir con las columnas definidas 
+                # en 'crearTablaConProductos' y la consulta a la BD.
+                self.tabla_productos.insert('', tk.END, values=producto)
 
     def cargarDatosEnTablaEnHilo(self):
         def cargar_datos():
             try:
-                # Obtiene los datos de la base de datos.
-                self.datos = self.base_de_datos.consultarDatosProductos()
                 # Programa la actualización de la tabla en el hilo principal.
                 # Usa 'ventana.after(0, ...)' para ejecutar 'actualizarTablaProductos'
                 # tan pronto como sea posible en el hilo principal.
-                self.ventana.after(0, self.actualizarTablaProductos)  # Actualizar la interfaz en el hilo principal
+                self.after(0, self.actualizarTablaProductos)  # Actualizar la interfaz en el hilo principal
             except Exception as e:
                 # Maneja cualquier error que ocurra durante la carga de datos.
                 print(f"Error al cargar datos: {e}")  # Imprime un mensaje de error.
@@ -618,6 +594,61 @@ class Aplicación(tk.Tk):
         self.hilos.append(hilo)
         # Inicia la ejecución del hilo.
         hilo.start()
+    
+    def cargarRegistros(self, event=None):
+        """
+        Carga los datos de un producto seleccionado en la tabla (tabla_productos)
+        y los muestra en los widgets del 'labelframe_productos'.
+
+        Esta función se activa cuando el usuario hace clic en una fila de la
+        tabla de productos. Realiza las siguientes acciones:
+
+        1. Verifica si hay un elemento seleccionado.
+        2. Obtiene los datos del elemento seleccionado.
+        3. Limpia todos los campos de entrada del labelframe de productos.
+        4. Carga los datos de la fila en los widgets correspondientes (Código, Nombre, etc.).
+        5. Habilita los botones "Editar", "Eliminar" y "Limpiar".
+        6. Actualiza el contador de caracteres de la descripción.
+        """
+        
+        # 1. Verifica si hay algún elemento seleccionado en la tabla de productos.
+        if len(self.tabla_productos.selection()) > 0:
+            
+            # Obtiene el identificador del elemento seleccionado.
+            item_seleccionado = self.tabla_productos.focus()
+            
+            if item_seleccionado:
+                # 2. Obtiene los valores de la fila seleccionada.
+                # El orden de 'datos' coincide con las columnas de 'crearTablaConProductos':
+                # 0: código, 1: nombre, 2: precio, 3: stock_actual, 4: stock_mínimo, 5: descripción
+                datos = self.tabla_productos.item(item_seleccionado)['values']
+
+                # 3. Limpia la descripción antes de cargar nuevos datos.
+                self.texto_desplazado.delete('1.0', tk.END)
+
+                # 4. Carga los datos en los widgets de la interfaz:
+                self.código.set(datos[0])
+                self.nombre.set(datos[1])
+                self.precio.set(datos[2])
+                self.stock.set(datos[3])
+                self.stock_mínimo.set(datos[4])
+                self.texto_desplazado.insert('1.0', datos[5])
+
+                # 5. Deshabilita los botones correspondientes
+                self.botón_editar_productos.config(state='enabled')
+                self.botón_eliminar_productos.config(state='enabled')
+                self.botón_limpiar_productos.config(state="enabled")
+
+                # 6. Calcula y muestra los caracteres restantes para la descripción.
+                descripción_actual = datos[5]
+                caracteres_restantes = MÁX_CAR_DESCRIP - len(descripción_actual)
+                self.etiqueta_contador_caracteres.config(text=str(caracteres_restantes))
+
+                # 7. Cambia el color del contador de caracteres
+                if caracteres_restantes <= ADVERTENCIA_CANT_CAR_DESCRIP:
+                    self.etiqueta_contador_caracteres.configure(style="rojo.TLabel") # Rojo
+                else:
+                    self.etiqueta_contador_caracteres.configure(style="verde.TLabel") # Verde
 
     def editarProducto(self):
         """
@@ -708,9 +739,13 @@ class Aplicación(tk.Tk):
         self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.
         self.precio.set('')  # Limpia el campo de importe.
         self.entrada_stock.delete(0, "end")
+        self.entrada_stock_mínimo.delete(0, "end")
+        self.entrada_código.delete(0, "end")
+        self.entrada_nombre.delete(0, "end")
         self.botón_editar_productos.config(state='disabled')  # Deshabilita el botón "Editar".
         self.botón_eliminar_productos.config(state='disabled')  # Deshabilita el botón "Eliminar".
         self.botón_limpiar_productos.config(state="disabled")  # Deshabilita el botón "Limpiar".
+        self.botón_añadir_productos.config(state='disabled')  # Deshabilita el botón "Añadir".
         self.tabla_productos.selection_set(()) # Deselecciona la tabla
         self.etiqueta_contador_caracteres.config(text=str(MÁX_CAR_DESCRIP)) # actualiza la cantidad de caracteres restantes
         # cambia a verde el color de la etiqueta de los caracteres restantes

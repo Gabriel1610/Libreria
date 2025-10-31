@@ -1,0 +1,8 @@
+Respaldo de la base de datos/
+__pycache__/
+build/
+dist/
+*.txt
+*.ini
+*.pdf
+*.exe

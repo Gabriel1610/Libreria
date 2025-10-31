@@ -153,6 +153,65 @@ class BaseDeDatos:
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
 
+    def buscarProductoPorCódigo(self, código):
+        """
+        Busca un producto en la tabla PRODUCTO usando su 'código' único.
+
+        Args:
+            código (str): El código del producto a buscar.
+
+        Returns:
+            tuple: Una tupla con los datos del producto si se encuentra:
+                   (codigo, nombre, descripcion, precio_venta, 
+                    stock_actual, stock_minimo)
+            None: Si no se encuentra el producto o si ocurre un error.
+        """
+        logger = logging.getLogger(__name__)  # Obtener el logger
+        conexión = None
+        cursor = None
+
+        try:
+            conexión = self.abrir()  # Abrir la conexión
+            cursor = conexión.cursor()
+            
+            consulta = """SELECT codigo, nombre, descripcion, 
+                                 precio_venta, stock_actual, stock_minimo
+                          FROM PRODUCTO
+                          WHERE codigo = %s;
+                       """
+            
+            # Ejecutar la consulta pasando el 'código' como una tupla
+            cursor.execute(consulta, (código,))
+            
+            # Obtener el único resultado (o None si no se encontró)
+            producto = cursor.fetchone() 
+            
+            if producto:
+                logger.info(f"Producto encontrado con código: {código}.")
+            else:
+                logger.warning(f"No se encontró ningún producto con código: {código}.")
+                
+            return producto # Devuelve la tupla del producto o None
+
+        except mysql.connector.Error as err:
+            # Registra un error específico de MySQL
+            logger.exception(f"Error de MySQL durante la búsqueda del producto con código {código}:")
+            return None
+
+        except Exception as e:
+            # Registra cualquier otro error inesperado
+            logger.exception(f"Error inesperado durante la búsqueda del producto con código {código}:")
+            return None
+
+        finally:
+            # Este bloque se ejecuta siempre
+            if cursor:
+                cursor.close()
+                logger.debug("Cursor cerrado.")
+            if conexión and conexión.is_connected():
+                conexión.close()
+                logger.info("Conexión a la base de datos cerrada.")
+
     def consultarDatosProductos(self):
         """
         Consulta y devuelve todos los productos de la tabla PRODUCTO.
@@ -208,7 +267,7 @@ class BaseDeDatos:
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
                 logger.info("Conexión a la base de datos cerrada.")
-                
+
     # Respaldar una base de datos MySQL usando Python
     def respaldarBaseDeDatos(self, ubicación_respaldo):
         config = self.obtener_configuración()
