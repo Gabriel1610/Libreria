@@ -845,45 +845,46 @@ class Aplicación(tk.Tk):
 
     def editarProducto(self):
         """
-        Edita el producto seleccionado en la tabla de productos.
+        Intenta editar el producto seleccionado en la base de datos.
 
-        Este método recupera el producto actualmente seleccionado de la tabla,
-        recopila los nuevos valores del formulario y actualiza la información
-        del producto en la base de datos. Después de modificar el producto,
-        refresca la interfaz de usuario limpiando los campos, recargando la tabla
-        de productos y respaldando la base de datos.
-
-        Retorna:
-            None
+        Recopila los nuevos valores del formulario y los envía a la base de datos.
+        Confía en la restricción UNIQUE de la base de datos para capturar 
+        errores de código duplicado.
         """
         valores = []  # Lista para almacenar los nuevos valores del producto.
         item_seleccionado = self.tabla_productos.focus()  # Obtiene el ítem seleccionado.
         
-        if item_seleccionado and self.esUnProductoVálido():  # Verifica selección
-            datos = self.tabla_productos.item(item_seleccionado)['values']  # Obtiene los valores del ítem.
-            # Guarda los valores del formulario en la lista valores
-            valores.append(self.código.get().strip())
+        # 1. Verifica si hay un ítem seleccionado Y si el formulario es válido
+        if item_seleccionado and self.esUnProductoVálido():
+            datos = self.tabla_productos.item(item_seleccionado)['values']  # Obtiene los valores ORIGINALES.
             
-            if self.base_de_datos.buscarProductoPorCódigo(valores[-1]):
-                messagebox.showwarning("¡Atención!", "Ya existe un producto con ese código.")
-            else:
-                valores.append(self.nombre.get().strip())
-                valores.append(self.texto_desplazado.get("1.0", tk.END).strip())
-                valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0)
-                valores.append(int(self.stock.get().strip()) if self.stock.get().strip() else 0)
-                valores.append(int(self.stock_mínimo.get().strip()) if self.stock_mínimo.get().strip() else 0)
-                valores.append(datos[-1])  # Agrega el id_producto
+            # 2. Prepara los valores para enviar a la BD
+            valores.append(self.código.get().strip()) # 0: código
+            valores.append(self.nombre.get().strip()) # 1: nombre
+            valores.append(self.texto_desplazado.get("1.0", tk.END).strip()) # 2: desc
+            valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0) # 3: precio
+            valores.append(int(self.stock.get().strip()) if self.stock.get().strip() else 0) # 4: stock
+            valores.append(int(self.stock_mínimo.get().strip()) if self.stock_mínimo.get().strip() else 0) # 5: stock_min
+            valores.append(datos[-1])  # 6: Agrega el id_producto (para el WHERE)
 
-                self.base_de_datos.modificarUnProducto(valores)  # Modifica el producto en la base de datos.
+            # 3. Intenta modificar, confiando en la BD para capturar duplicados
+            try:
+                self.base_de_datos.modificarUnProducto(valores)  # Modifica el producto
                 
-                # Actualiza la interfaz (limpia campos, recarga tabla) y respalda la BD.
                 self.limpiarCamposProductos()
                 self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza los datos locales.
                 self.cargarDatosEnTablaEnHilo()
                 funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
-                
                 messagebox.showinfo("Éxito", "Producto modificado correctamente.")
-                # (FIN DE BLOQUE CORREGIDO)
+
+            except ValueError as ve:
+                # Captura el error de "Código duplicado" (1062)
+                messagebox.showerror("Error de Duplicado", str(ve))
+                self.entrada_código.focus() # Pone el foco en el campo incorrecto
+            except Exception as e:
+                # Captura cualquier otro error
+                messagebox.showerror("Error de Base de Datos", 
+                                     f"No se pudo modificar el producto: {str(e)}")
     
     def eliminarProducto(self):
         """
