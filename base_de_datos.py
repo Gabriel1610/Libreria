@@ -133,9 +133,18 @@ class BaseDeDatos:
                     raise  # Relanzar otros InternalError
 
             except mysql.connector.Error as err:
-                # Registra un error específico de MySQL si ocurre
-                logger.exception("Error de MySQL durante el ingreso del producto:")
-                raise
+                # Error 1062: Violación de restricción UNIQUE (código duplicado)
+                if err.errno == 1062: 
+                    mensaje_error = f"Error: Ya existe un producto con ese código. (Detalle: {err.msg})"
+                    logger.warning(mensaje_error)
+                    
+                    # Lanza un error simple que la UI pueda capturar
+                    raise ValueError(f"Ya existe un producto con ese código.")
+                # --- FIN NUEVA LÓGICA ---
+                else:
+                    # Registra cualquier otro error de MySQL
+                    logger.exception("Error de MySQL durante el ingreso del producto:")
+                    raise # Relanza la excepción original si no es la 1062
 
             except Exception as e:
                 # Registra cualquier otro error inesperado

@@ -633,45 +633,48 @@ class Aplicación(tk.Tk):
         if self.esUnProductoVálido():  # 1. Verifica si los datos ingresados son válidos.
             # 2. Obtiene el código del producto
             código = self.código.get().strip()
-            if self.base_de_datos.buscarProductoPorCódigo(código):
-                messagebox.showwarning("¡Atención!", "Ya existe un producto con ese código.")
-            else:
-                # 3. Obtiene el resto de los datos de los widgets de entrada
-                nombre = self.nombre.get().strip()
-                # La validación ya confirmó que estos son números válidos
-                precio = float(self.precio.get().strip())
-                stock_actual = int(self.stock.get().strip())
-                stock_mínimo = int(self.stock_mínimo.get().strip())
-                descripción = self.texto_desplazado.get("1.0", tk.END).strip()
+            # 3. Obtiene el resto de los datos de los widgets de entrada
+            nombre = self.nombre.get().strip()
+            # La validación ya confirmó que estos son números válidos
+            precio = float(self.precio.get().strip())
+            stock_actual = int(self.stock.get().strip())
+            stock_mínimo = int(self.stock_mínimo.get().strip())
+            descripción = self.texto_desplazado.get("1.0", tk.END).strip()
 
-                # 4. Crea una lista con los datos del nuevo producto
-                #    (El orden debe coincidir con el de tu tabla en la base de datos)
-                producto = [
-                    código,
-                    nombre,
-                    descripción,
-                    precio,
-                    stock_actual,
-                    stock_mínimo
-                ]
+            # 4. Crea una lista con los datos del nuevo producto
+            #    (El orden debe coincidir con el de tu tabla en la base de datos)
+            producto = [
+                código,
+                nombre,
+                descripción,
+                precio,
+                stock_actual,
+                stock_mínimo
+            ]
                 
-                try:
-                    # 5. Llama a la función para ingresar el producto en la base de datos.
-                    self.base_de_datos.ingresarProducto(producto)
-                    
-                    # 6. Actualiza la interfaz
-                    self.limpiarCamposProductos()      # Limpia los campos de entrada
-                    self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza la lista de datos
-                    self.cargarDatosEnTablaEnHilo()  # Recarga los datos en la tabla (en un hilo)
+            try:
+                # 5. Llama a la función para ingresar el producto en la base de datos.
+                self.base_de_datos.ingresarProducto(producto)
+                
+                # 6. Actualiza la interfaz
+                self.limpiarCamposProductos()      # Limpia los campos de entrada
+                self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza la lista de datos
+                self.cargarDatosEnTablaEnHilo()  # Recarga los datos en la tabla (en un hilo)
 
-                    # 7. Respalda la base de datos (como en tus otras funciones)
-                    funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
-                    
-                    messagebox.showinfo("Éxito", "Producto añadido correctamente.")
-                    
-                except Exception as e:
-                    messagebox.showerror("Error de Base de Datos", 
-                                        f"No se pudo añadir el producto: {str(e)}")
+                # 7. Respalda la base de datos (como en tus otras funciones)
+                funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+                
+                messagebox.showinfo("Éxito", "Producto añadido correctamente.")
+
+            # --- NUEVO BLOQUE "except" ---
+            except ValueError as ve:
+                # Captura el error de "Código duplicado" que lanzamos desde la BD
+                messagebox.showerror("Error de Duplicado", str(ve))
+                self.entrada_código.focus() # Pone el foco en el campo incorrecto
+
+            except Exception as e: # Captura todos los demás errores
+                messagebox.showerror("Error de Base de Datos", 
+                                     f"No se pudo añadir el producto: {str(e)}")
 
     def esUnProductoVálido(self):
         producto_válido = True  # Asume inicialmente que los datos son válidos
