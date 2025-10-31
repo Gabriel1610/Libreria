@@ -212,6 +212,74 @@ class BaseDeDatos:
                 conexión.close()
                 logger.info("Conexión a la base de datos cerrada.")
 
+    def buscarProductoPorNombre(self, nombre):
+        """
+        Busca productos en la tabla PRODUCTO cuyo nombre contenga el término de búsqueda.
+        La búsqueda ignora mayúsculas y minúsculas.
+
+        Args:
+            nombre (str): El término de búsqueda para el nombre del producto.
+
+        Returns:
+            list: Una lista de tuplas con los datos de los productos encontrados.
+                  El orden de las tuplas es:
+                  (codigo, nombre, precio_venta, stock_actual, 
+                   stock_minimo, descripcion, id_producto)
+            None: Si ocurre un error.
+        """
+        logger = logging.getLogger(__name__)  # Obtener el logger
+        conexión = None
+        cursor = None
+
+        try:
+            conexión = self.abrir()  # Abrir la conexión
+            cursor = conexión.cursor()
+            
+            # Prepara el término de búsqueda para SQL LIKE (case-insensitive)
+            # Añadimos '%' para que busque 'nombre' en cualquier parte de la cadena
+            término_búsqueda = f"%{nombre.lower()}%"
+
+            # Consulta para seleccionar productos por nombre (case-insensitive y contenido)
+            # El orden de las columnas coincide con 'consultarDatosProductos'
+            consulta = """SELECT codigo, nombre, precio_venta, stock_actual, 
+                                 stock_minimo, descripcion, id_producto
+                          FROM PRODUCTO
+                          WHERE LOWER(nombre) LIKE %s
+                          ORDER BY nombre; 
+                       """
+            
+            # Ejecutar la consulta pasando el término de búsqueda
+            cursor.execute(consulta, (término_búsqueda,))
+            
+            productos = cursor.fetchall() # Obtener todos los resultados
+            
+            if productos:
+                logger.info(f"Se encontraron {len(productos)} productos con el nombre '{nombre}'.")
+            else:
+                # Esto no es un error, simplemente no hubo coincidencias
+                logger.info(f"No se encontró ningún producto que contenga '{nombre}'.")
+                
+            return productos # Devuelve la lista de productos (puede estar vacía)
+
+        except mysql.connector.Error as err:
+            # Registra un error específico de MySQL
+            logger.exception(f"Error de MySQL durante la búsqueda por nombre '{nombre}':")
+            return None # Devuelve None en caso de error
+
+        except Exception as e:
+            # Registra cualquier otro error inesperado
+            logger.exception(f"Error inesperado durante la búsqueda por nombre '{nombre}':")
+            return None # Devuelve None en caso de error
+
+        finally:
+            # Este bloque se ejecuta siempre
+            if cursor:
+                cursor.close()
+                logger.debug("Cursor cerrado.")
+            if conexión and conexión.is_connected():
+                conexión.close()
+                logger.info("Conexión a la base de datos cerrada.")
+                
     def consultarDatosProductos(self):
         """
         Consulta y devuelve todos los productos de la tabla PRODUCTO.
@@ -342,7 +410,75 @@ class BaseDeDatos:
                     # Cierra la conexión
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
-                    
+
+    def eliminarProductoPorID(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Elimina un producto existente de la tabla PRODUCTO usando su ID.
+        Maneja reintentos en caso de deadlock.
+
+        Args:
+            datos (list): Una lista que contiene el id_producto: 
+                          [id_producto (para el WHERE)]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)  # Obtener el logger
+        reintentar = True
+        
+        conexión = None
+        cursor = None
+        
+        # El id_producto está en la primera posición de la lista 'datos'
+        id_del_producto = datos[0] 
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()  # Abrir la conexión
+                cursor = conexión.cursor()
+                
+                # Consulta adaptada para eliminar el producto
+                consulta = """DELETE FROM PRODUCTO
+                              WHERE id_producto = %s;
+                           """
+                
+                cursor.execute(consulta, datos)
+                conexión.commit()  # Confirmar la transacción
+                reintentar = False
+                logger.info(f"Producto ID: {id_del_producto} eliminado exitosamente.")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(f"Deadlock detectado al eliminar producto. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)  # espera antes de reintentar
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock al eliminar producto.")
+                        raise
+                else:
+                    raise # Relanzar otros InternalError
+
+            except mysql.connector.Error as err:
+                # Registra un error específico de MySQL
+                logger.exception("Error de MySQL durante la eliminación del producto:")
+                raise
+
+            except Exception as e:
+                # Registra cualquier otro error inesperado
+                logger.exception("Error inesperado durante la eliminación del producto:")
+                raise
+
+            finally:
+                # Este bloque se ejecuta siempre
+                if cursor:
+                    cursor.close()
+                    logger.debug("Cursor cerrado.")
+                if conexión and conexión.is_connected():
+                    # Cierra la conexión
+                    conexión.close()
+                    logger.info("Conexión a la base de datos cerrada.")
+
     # Respaldar una base de datos MySQL usando Python
     def respaldarBaseDeDatos(self, ubicación_respaldo):
         config = self.obtener_configuración()

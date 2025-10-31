@@ -98,6 +98,7 @@ TEXTO_BOTÓN_AÑADIR_PRODUCTOS = "Añadir"
 TEXTO_BOTÓN_EDITAR_PRODUCTOS = "Editar"
 TEXTO_BOTÓN_ELIMINAR_PRODUCTOS = "Eliminar"
 TEXTO_BOTÓN_LIMPIAR_PRODUCTOS = "Limpiar"
+TEXTO_BOTÓN_BUSCAR_PRODUCTOS = "Buscar"
 
 # Padding (horizontal) para los botones en la fila 6.
 # Ajusta estos valores numéricos (85, 170, 255)
@@ -106,6 +107,7 @@ PADX_BOTÓN_AÑADIR_PRODUCTOS = (0, 0)
 PADX_BOTÓN_EDITAR_PRODUCTOS = (85, 0)
 PADX_BOTÓN_ELIMINAR_PRODUCTOS = (170, 0)
 PADX_BOTÓN_LIMPIAR_PRODUCTOS = (255, 0)
+PADX_BOTÓN_BUSCAR_PRODUCTOS = (340, 0)
 
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
@@ -457,6 +459,65 @@ class Aplicación(tk.Tk):
                                           padx=PADX_BOTÓN_LIMPIAR_PRODUCTOS, 
                                           pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                           sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+    
+        # --- Botón Buscar ---
+        self.botón_buscar_productos = ttk.Button(self.labelframe_productos, 
+                                                  text=TEXTO_BOTÓN_BUSCAR_PRODUCTOS, 
+                                                  command=self.buscarProducto) # (Asumo que la función se llama así)
+        self.botón_buscar_productos.grid(column=0, row=6, 
+                                          padx=PADX_BOTÓN_BUSCAR_PRODUCTOS, 
+                                          pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                          sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
+    def buscarProducto(self):
+        código = self.código.get().strip()
+        nombre = self.nombre.get().strip()
+        descripción = self.texto_desplazado.get("1.0", tk.END).strip()
+
+        # Usamos un 'set' para almacenar resultados únicos
+        # (Las tuplas de productos se pueden añadir a un set)
+        resultados_únicos = set()
+
+        # 1. Buscar por Código
+        if len(código) > 0:
+            # Asumimos que .buscarProductoPorCódigo() devuelve una tupla (producto) o None
+            producto_por_código = self.base_de_datos.buscarProductoPorCódigo(código)
+            if producto_por_código:  # Si no es None
+                resultados_únicos.add(producto_por_código)
+
+        # 2. Buscar por Nombre
+        if len(nombre) > 0:
+            # Asumimos que .buscarProductoPorNombre() devuelve una LISTA de tuplas
+            productos_por_nombre = self.base_de_datos.buscarProductoPorNombre(nombre)
+            if productos_por_nombre:  # Si la lista no está vacía
+                resultados_únicos.update(productos_por_nombre)
+
+        # 3. Buscar por Descripción
+        if len(descripción) > 0:
+            # Asumimos que .buscarProductoPorDescripción() devuelve una LISTA de tuplas
+            productos_por_descripción = self.base_de_datos.buscarProductoPorDescripción(descripción)
+            if productos_por_descripción:
+                resultados_únicos.update(productos_por_descripción)
+
+        # 4. Comprobar si el set tiene algún resultado
+        if resultados_únicos:
+            # Limpia los campos antes de cargar los datos
+            self.limpiarCamposProductos()
+
+            # Borra todas las filas existentes en la tabla
+            funciones_útiles.borrarTodasLasFilas(self.tabla_productos)
+            
+            # 5. Convertir el set de nuevo a una lista
+            lista_resultados = list(resultados_únicos)
+            
+            # 6. Ordenar la lista por el nombre (posición 1), ignorando mayúsculas
+            lista_resultados.sort(key=lambda producto: producto[1].lower())
+            
+            # 7. Asignar la lista ordenada y cargar la tabla
+            self.datos = lista_resultados
+            self.cargarTablaProducto() # Llama a la función que SÍ usa self.datos
+        else:
+            messagebox.showinfo('No encontrado', 'No se encontró ningún producto con esos datos.')
 
     def añadirProducto(self):
         """
@@ -493,6 +554,7 @@ class Aplicación(tk.Tk):
                     
                     # 6. Actualiza la interfaz
                     self.limpiarCamposProductos()      # Limpia los campos de entrada
+                    self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza la lista de datos
                     self.cargarDatosEnTablaEnHilo()  # Recarga los datos en la tabla (en un hilo)
 
                     # 7. Respalda la base de datos (como en tus otras funciones)
@@ -557,7 +619,6 @@ class Aplicación(tk.Tk):
 
         """
         funciones_útiles.borrarTodasLasFilas(self.tabla_productos)  # Elimina todas las filas existentes de la tabla.
-        self.datos = self.base_de_datos.consultarDatosProductos()  # Obtiene los datos actualizados de la base de datos.
         self.cargarTablaProducto()  # Carga los datos en la tabla (desde 'self.datos').
 
     def cargarTablaProducto(self):
@@ -667,27 +728,31 @@ class Aplicación(tk.Tk):
         valores = []  # Lista para almacenar los nuevos valores del producto.
         item_seleccionado = self.tabla_productos.focus()  # Obtiene el ítem seleccionado.
         
-        if item_seleccionado:  # Verifica selección
+        if item_seleccionado and self.esUnProductoVálido():  # Verifica selección
             datos = self.tabla_productos.item(item_seleccionado)['values']  # Obtiene los valores del ítem.
-            
             # Guarda los valores del formulario en la lista valores
             valores.append(self.código.get().strip())
-            valores.append(self.nombre.get().strip())
-            valores.append(self.texto_desplazado.get("1.0", tk.END).strip())
-            valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0)
-            valores.append(int(self.stock.get().strip()) if self.stock.get().strip() else 0)
-            valores.append(int(self.stock_mínimo.get().strip()) if self.stock_mínimo.get().strip() else 0)
-            valores.append(datos[-1])  # Agrega el id_producto
+            
+            if self.base_de_datos.buscarProductoPorCódigo(valores[-1]):
+                messagebox.showwarning("¡Atención!", "Ya existe un producto con ese código.")
+            else:
+                valores.append(self.nombre.get().strip())
+                valores.append(self.texto_desplazado.get("1.0", tk.END).strip())
+                valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0)
+                valores.append(int(self.stock.get().strip()) if self.stock.get().strip() else 0)
+                valores.append(int(self.stock_mínimo.get().strip()) if self.stock_mínimo.get().strip() else 0)
+                valores.append(datos[-1])  # Agrega el id_producto
 
-            self.base_de_datos.modificarUnProducto(valores)  # Modifica el producto en la base de datos.
-            
-            # Actualiza la interfaz (limpia campos, recarga tabla) y respalda la BD.
-            self.limpiarCamposProductos()
-            self.cargarDatosEnTablaEnHilo()
-            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
-            
-            messagebox.showinfo("Éxito", "Producto modificado correctamente.")
-            # (FIN DE BLOQUE CORREGIDO)
+                self.base_de_datos.modificarUnProducto(valores)  # Modifica el producto en la base de datos.
+                
+                # Actualiza la interfaz (limpia campos, recarga tabla) y respalda la BD.
+                self.limpiarCamposProductos()
+                self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza los datos locales.
+                self.cargarDatosEnTablaEnHilo()
+                funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+                
+                messagebox.showinfo("Éxito", "Producto modificado correctamente.")
+                # (FIN DE BLOQUE CORREGIDO)
     
     def eliminarProducto(self):
         """
@@ -724,7 +789,9 @@ class Aplicación(tk.Tk):
                     id_del_producto = datos[-1]
                     
                     # Llama a la función de la base de datos para eliminar el producto.
-                    self.base_de_datos.eliminarProductoPorID([id_del_producto]) 
+                    self.base_de_datos.eliminarProductoPorID([id_del_producto])
+
+                    self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza los datos locales.
                     
                     # Limpia los campos del formulario de productos.
                     self.limpiarCamposProductos()  
@@ -911,8 +978,6 @@ class Aplicación(tk.Tk):
         # Ejecuta la espera de los hilos en un *NUEVO* hilo
         threading.Thread(target=esperar_hilos, daemon=True).start()
     
-
-# --- Necesitas esta parte para ejecutar la aplicación ---
 if __name__ == "__main__":
     app = Aplicación()
     app.mainloop()
