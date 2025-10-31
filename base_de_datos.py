@@ -240,7 +240,8 @@ class BaseDeDatos:
                                  precio_venta, 
                                  stock_actual, 
                                  stock_minimo, 
-                                 descripcion
+                                 descripcion,
+                                 id_producto
                           FROM PRODUCTO
                           ORDER BY nombre; 
                        """

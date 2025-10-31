@@ -571,7 +571,7 @@ class Aplicación(tk.Tk):
         if self.datos: 
             for producto in self.datos:
                 # 'producto' es una tupla que se asume está en el orden:
-                # (codigo, nombre, precio, stock_actual, stock_minimo, descripcion)
+                # (codigo, nombre, precio, stock_actual, stock_minimo, descripcion, id_producto)
                 # Este orden debe coincidir con las columnas definidas 
                 # en 'crearTablaConProductos' y la consulta a la BD.
                 self.tabla_productos.insert('', tk.END, values=producto)
@@ -652,88 +652,41 @@ class Aplicación(tk.Tk):
 
     def editarProducto(self):
         """
-        Edita un movimiento existente en la base de datos si la entrada es válida.
+        Edita el producto seleccionado en la tabla de productos.
 
-        Esta función se ejecuta cuando el usuario hace clic en el botón "Editar".
-        Realiza las siguientes acciones:
+        Este método recupera el producto actualmente seleccionado de la tabla,
+        recopila los nuevos valores del formulario y actualiza la información
+        del producto en la base de datos. Después de modificar el producto,
+        refresca la interfaz de usuario limpiando los campos, recargando la tabla
+        de productos y respaldando la base de datos.
 
-        1. Obtiene el ítem seleccionado de la tabla de movimientos.
-        2. Verifica si hay un ítem seleccionado y si los datos ingresados son válidos llamando a 'esUnMovimientoVálido()'.
-        3. Si se cumplen ambas condiciones:
-           - Obtiene la fecha del calendario y la formatea como 'YYYY-MM-DD'.
-           - Crea una lista 'valores' para almacenar los nuevos valores del movimiento.
-           - Agrega la fecha formateada a la lista 'valores'.
-           - Agrega el importe a la lista 'valores'.
-           - Determina si el movimiento es en dólares (1) o pesos (0) y lo agrega a 'valores'.
-           - Determina si es deuda (1) o haber (0) y lo agrega a 'valores'.
-           - Agrega el medio de pago a 'valores'.
-           - Agrega la descripción (eliminando saltos de línea al final) a 'valores'.
-           - Obtiene la cantidad de cuotas (por defecto es 1 si no se especifica) y la agrega a 'valores'.
-           - Agrega el código único del movimiento original (obtenido de 'datos[ÍNDICE_CÓD_MOV]') a 'valores'.  Esto es crucial
-             para identificar el movimiento que se va a editar.
-           - Llama a 'modificarUnMovimiento' en la base de datos para actualizar el movimiento.
-           - Finalmente, actualiza el estado de la interfaz y respalda la base de datos.
-        
-        valores = []  # Lista para almacenar los nuevos valores del movimiento.
-        item_seleccionado = self.tabla_movimientos.focus()  # Obtiene el ítem seleccionado.
-        datos = self.tabla_movimientos.item(item_seleccionado)['values']  # Obtiene los valores del ítem.
-        if item_seleccionado and self.esUnMovimientoVálido():  # Verifica selección y validez.
-            fecha_date = datetime.strptime(self.calendario_fecha.get_date(), FORMATO_FECHA_CALENDAR).date()  # Obtiene la fecha.
-            fecha = fecha_date.strftime(FORMATO_FECHA_BD)  # Formatea la fecha.
-            valores.append(fecha)  # Agrega la fecha a la lista de valores.
-            valores.append(self.importe.get())  # Agrega el importe.
-            valores.append(0)  # Valor por defecto para 'en_dólares'.
-            if self.tipo_moneda.get() == 2:  # Si es en dólares...
-                valores[-1] = 1  # ...cambia el valor a 1.
-            valores.append(1)  # Valor por defecto para 'es_deuda'.
-            if self.tipo_movimiento.get() == 2:  # Si es haber...
-                valores[-1] = 0  # ...cambia el valor a 0.
-            medio_pago = self.medio.get()  # Obtiene el medio de pago.
-            valores.append(medio_pago)  # Agrega el medio de pago.
-            valores.append(self.texto_desplazado.get('1.0', tk.END).rstrip())  # Agrega la descripción.
-            cuotas_totales = 1  # Valor por defecto para cuotas totales.
-            cuotas_totales_cuadro_texto = self.cant_cuotas.get()  # Obtiene cuotas del cuadro de texto.
-            if cuotas_totales_cuadro_texto != '':  # Si se especificó un valor...
-                cuotas_totales = int(cuotas_totales_cuadro_texto)  # ...lo usa.
-            # else:  # Este 'else' es redundante, ya que cuotas_totales ya tiene el valor por defecto.
-            #     cuotas_totales = 1
-            valores.append(cuotas_totales)  # Agrega la cantidad de cuotas.
-            valores.append(datos[ÍNDICE_CÓD_MOV_TABLA])  # Agrega el código único del movimiento original.
-            self.base_de_datos.modificarUnMovimiento(valores)  # Modifica el movimiento en la base de datos.
-            # Actualiza la interfaz (limpia campos, recarga tabla, recalcula deuda) y respalda la BD.
-            self.actualizarEstadoYRespaldar()
-            self.cargarDatosEnTablaEnHilo()
-            self.cargarDatosEnTablaTarjetasEnHilo()"""
-
-    def eliminarProducto(self):
+        Retorna:
+            None
         """
-        Elimina el movimiento seleccionado de la base de datos y actualiza la interfaz.
-
-        Esta función se ejecuta cuando el usuario hace clic en el botón "Eliminar".
-        Realiza las siguientes acciones:
-
-        1. Obtiene el ítem seleccionado de la tabla de movimientos.
-        2. Si hay un ítem seleccionado:
-           - Extrae los datos del ítem, incluyendo su código único (que está en la posición 9 de la lista 'values').
-           - Llama a la función 'eliminarMovimientoPorCódigo' de la base de datos para eliminar el movimiento.
-           - Llama a la función 'limpiar' para limpiar los campos de entrada.
-           - Llama a la función 'crearHiloRespaldarBaseDeDatos' para crear un hilo que respalde la base de datos.
-           - Establece 'self.cambiar_deuda_dólar' en 'True' para indicar que la deuda en dólares debe ser recalculada.
-           - Llama a 'self.actualizarAdvertenciaDeActualizaciónDeDeuda' para actualizar la advertencia sobre la actualización del precio del dólar
-           y que así el usuario sepa que el monto que está viendo puede no ser el real y presione en "Calcular" si quiere ver el verdadero.
-           - Llama a 'self.cargarDatosEnTablaEnHilo' para recargar los datos en la tabla (en un hilo separado).
+        valores = []  # Lista para almacenar los nuevos valores del producto.
+        item_seleccionado = self.tabla_productos.focus()  # Obtiene el ítem seleccionado.
         
-        item_seleccionado = self.tabla_movimientos.focus()  # Obtiene el ítem seleccionado de la tabla.
-        datos = self.tabla_movimientos.item(item_seleccionado)['values'] #Obtiene los valores del item seleccionado
-        if item_seleccionado:  # Verifica si hay un ítem seleccionado.
-            self.base_de_datos.eliminarMovimientoPorCódigo([datos[ÍNDICE_CÓD_MOV_TABLA]]) # Elimina el movimiento de la base de datos.
-            self.limpiar()  # Limpia los campos de entrada.
-            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)  # Respalda la base de datos (en un hilo).
-            self.cambiar_deuda_dólar = True  # Indica que se debe recalcular la deuda en dólares.
-            self.actualizarAdvertenciaDeActualizaciónDeDeuda()  # Actualiza la advertencia sobre el precio del dólar.
-            self.cargarDatosEnTablaEnHilo()  # Recarga los datos en la tabla (en un hilo).
-            if datos[ÍNDICE_NOMBRE_MEDIO_PAGO_TABLA] != 'Efectivo':
-                self.cargarDatosEnTablaTarjetasEnHilo()"""
+        if item_seleccionado:  # Verifica selección
+            datos = self.tabla_productos.item(item_seleccionado)['values']  # Obtiene los valores del ítem.
+            
+            # Guarda los valores del formulario en la lista valores
+            valores.append(self.código.get().strip())
+            valores.append(self.nombre.get().strip())
+            valores.append(self.texto_desplazado.get("1.0", tk.END).strip())
+            valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0)
+            valores.append(int(self.stock.get().strip()) if self.stock.get().strip() else 0)
+            valores.append(int(self.stock_mínimo.get().strip()) if self.stock_mínimo.get().strip() else 0)
+            valores.append(datos[-1])  # Agrega el id_producto
+
+            self.base_de_datos.modificarUnProducto(valores)  # Modifica el producto en la base de datos.
+            
+            # Actualiza la interfaz (limpia campos, recarga tabla) y respalda la BD.
+            self.limpiarCamposProductos()
+            self.actualizarTablaProductos()
+            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+            
+            messagebox.showinfo("Éxito", "Producto modificado correctamente.")
+            # (FIN DE BLOQUE CORREGIDO)
     
     def limpiarCamposProductos(self):
         self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.
