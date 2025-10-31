@@ -183,8 +183,8 @@ class BaseDeDatos:
             conexión = self.abrir()  # Abrir la conexión
             cursor = conexión.cursor()
             
-            consulta = """SELECT codigo, nombre, descripcion, 
-                                 precio_venta, stock_actual, stock_minimo
+            consulta = """SELECT codigo, nombre, 
+                                 precio_venta, stock_actual, stock_minimo, descripcion, id_producto
                           FROM PRODUCTO
                           WHERE codigo = %s;
                        """
