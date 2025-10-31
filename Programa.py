@@ -336,7 +336,8 @@ class Aplicación(tk.Tk):
             self.página_cuaderno_productos,
             columns=columnas_stock,
             show='headings',
-            height=12  # Altura para la tabla de alertas
+            height=12,  # Altura para la tabla de alertas
+            selectmode='none'  # <-- AÑADE ESTA LÍNEA
         )
 
         # 3. Configurar el tag para la alerta (texto rojo)
