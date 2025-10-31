@@ -99,6 +99,7 @@ TEXTO_BOTÓN_EDITAR_PRODUCTOS = "Editar"
 TEXTO_BOTÓN_ELIMINAR_PRODUCTOS = "Eliminar"
 TEXTO_BOTÓN_LIMPIAR_PRODUCTOS = "Limpiar"
 TEXTO_BOTÓN_BUSCAR_PRODUCTOS = "Buscar"
+TEXTO_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = "Todo"
 
 # Padding (horizontal) para los botones en la fila 6.
 # Ajusta estos valores numéricos (85, 170, 255)
@@ -107,7 +108,8 @@ PADX_BOTÓN_AÑADIR_PRODUCTOS = (0, 0)
 PADX_BOTÓN_EDITAR_PRODUCTOS = (85, 0)
 PADX_BOTÓN_ELIMINAR_PRODUCTOS = (170, 0)
 PADX_BOTÓN_LIMPIAR_PRODUCTOS = (255, 0)
-PADX_BOTÓN_BUSCAR_PRODUCTOS = (340, 0)
+PADX_BOTÓN_BUSCAR_PRODUCTOS = (10, 0)
+PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = (95, 0)
 
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
@@ -144,6 +146,7 @@ class Aplicación(tk.Tk):
 
         # --- Inicialización de variables y objetos ---
             self.base_de_datos = base_de_datos.BaseDeDatos()  # Crea una instancia de la clase BaseDeDatos.
+            self.datos = self.base_de_datos.consultarDatosProductos()  # Lista para almacenar los datos que se mostrarán en la tabla.
             self.hilos = []  # Lista para almacenar los hilos que se creen.
             self.evento_cancelar = threading.Event()  # Evento para cancelar hilos.
             
@@ -190,6 +193,7 @@ class Aplicación(tk.Tk):
 
             # Llama a los métodos para crear los diferentes elementos de la interfaz:
             self.crearTablaConProductos()  # Crea la tabla principal.
+            self.crearTablaStockAlerta()
             self.crearLabelFrameProductos() # Crea el LabelFrame para agregar productos.
 
             # Configura la función que se ejecutará cuando se cierre la ventana.
@@ -217,7 +221,7 @@ class Aplicación(tk.Tk):
             self.página_cuaderno_productos,
             columns=columnas,
             show='headings',
-            height=14
+            height=7
         )
 
         self.tabla_productos.heading('código', text='Código')
@@ -236,16 +240,16 @@ class Aplicación(tk.Tk):
 
         self.tabla_productos.column(
             "código",
-            anchor='center',
+            anchor='w',
             width=150,
             minwidth=150,
             stretch=tk.NO
         )
         self.tabla_productos.column(
             "nombre",
-            anchor='center',
-            width=200,
-            minwidth=200,
+            anchor='w',
+            width=400,
+            minwidth=400,
             stretch=tk.NO
         )
         self.tabla_productos.column(
@@ -296,6 +300,72 @@ class Aplicación(tk.Tk):
 
         self.tabla_productos.bind("<<TreeviewSelect>>", self.cargarRegistros)
     
+    # (Fin de crearLabelFrameProductos, línea 519)
+
+    def crearTablaStockAlerta(self):
+        """
+        Crea la etiqueta y la tabla (Treeview) para mostrar los productos
+        con bajo stock en la pestaña de productos.
+        """
+        # --- 1. Crear la Etiqueta ---
+        self.etiqueta_stock_alerta = ttk.Label(self.página_cuaderno_productos, 
+                                               text="Stock en alerta", 
+                                               font=FUENTE_TÍTULO_PRODUCTOS) # Re-usamos la fuente
+        
+        # Posicionar la etiqueta (Fila 4, debajo del formulario)
+        self.etiqueta_stock_alerta.grid(column=0, row=2, columnspan=2, 
+                                        padx=10, pady=(20, 5), sticky="w")
+
+        # --- 2. Definir Columnas ---
+        columnas_stock = ('código', 'nombre', 'stock_actual', 'stock_mínimo')
+
+        self.tabla_stock_alerta = ttk.Treeview(
+            self.página_cuaderno_productos,
+            columns=columnas_stock,
+            show='headings',
+            height=5  # Altura para la tabla de alertas
+        )
+
+        # --- 3. Definir Encabezados ---
+        self.tabla_stock_alerta.heading('código', text='Código', anchor='w')
+        self.tabla_stock_alerta.heading('nombre', text='Nombre', anchor='w')
+        self.tabla_stock_alerta.heading('stock_actual', text='Stock actual', anchor='center')
+        self.tabla_stock_alerta.heading('stock_mínimo', text='Stock mínimo', anchor='center')
+
+        # --- 4. Posicionar la Tabla ---
+        self.tabla_stock_alerta.grid(
+            row=3,
+            column=0,
+            columnspan=2, # Ocupa todo el ancho horizontal
+            sticky='nsew' # Se expande para llenar el espacio
+        )
+
+        # --- 5. Definir Anchos de Columna ---
+        # (Ajustados para que la tabla se expanda)
+        self.tabla_stock_alerta.column("código", anchor='w', width=150, stretch=tk.NO)
+        self.tabla_stock_alerta.column("nombre", anchor='w', width=400) # Se estira
+        self.tabla_stock_alerta.column("stock_actual", anchor='center', width=100, stretch=tk.NO)
+        self.tabla_stock_alerta.column("stock_mínimo", anchor='center', width=100, stretch=tk.NO)
+        
+        # --- 6. Scrollbars para la nueva tabla ---
+        self.barra_desplazamiento_vertical_stock = ttk.Scrollbar(
+            self.página_cuaderno_productos,
+            orient=tk.VERTICAL,
+            command=self.tabla_stock_alerta.yview
+        )
+        self.barra_desplazamiento_horizontal_stock = ttk.Scrollbar(
+            self.página_cuaderno_productos,
+            orient=tk.HORIZONTAL,
+            command=self.tabla_stock_alerta.xview
+        )
+
+        self.tabla_stock_alerta.configure(xscrollcommand=self.barra_desplazamiento_horizontal_stock.set)
+        self.tabla_stock_alerta.configure(yscrollcommand=self.barra_desplazamiento_vertical_stock.set)
+
+        # Posicionar scrollbars
+        self.barra_desplazamiento_vertical_stock.grid(row=3, column=2, sticky='ns')
+        self.barra_desplazamiento_horizontal_stock.grid(row=4, column=0, columnspan=2, sticky='we')
+
     def crearLabelFrameProductos(self):
         # --- Creación de Widgets ---
 
@@ -305,12 +375,11 @@ class Aplicación(tk.Tk):
         self.labelframe_productos = ttk.LabelFrame(self.página_cuaderno_productos, 
                                                 labelwidget=self.etiqueta_título_labelframe_productos)
 
-        self.labelframe_productos.grid(column=0, row=2, rowspan=2, 
+        self.labelframe_productos.grid(column=0, row=6, rowspan=2, 
                                     padx=PADX_ETIQUETA_NOMBRE_PRODUCTOS, 
                                     pady=PADY_ETIQUETA_NOMBRE_PRODUCTOS,
                                     sticky=STICKY_LABELFRAME_PRODUCTOS)
 
-        # --- CÓDIGO (NUEVO) --- (Fila 0)
         self.etiqueta_código = ttk.Label(self.labelframe_productos, text=ETIQUETA_CÓDIGO_TEXTO_PRODUCTOS)
         self.etiqueta_código.grid(column=0, row=0, 
                                 padx=PADX_ETIQUETA_CÓDIGO_PRODUCTOS, 
@@ -464,10 +533,35 @@ class Aplicación(tk.Tk):
         self.botón_buscar_productos = ttk.Button(self.labelframe_productos, 
                                                   text=TEXTO_BOTÓN_BUSCAR_PRODUCTOS, 
                                                   command=self.buscarProducto) # (Asumo que la función se llama así)
-        self.botón_buscar_productos.grid(column=0, row=6, 
+        self.botón_buscar_productos.grid(column=1, row=6, 
                                           padx=PADX_BOTÓN_BUSCAR_PRODUCTOS, 
                                           pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                           sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        
+        # --- Botón mostrar Todo ---
+
+        self.botón_mostrar_todos_los_productos = ttk.Button(self.labelframe_productos, text=TEXTO_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS,
+                                                            command=self.mostrarTodosLosProductos)
+        self.botón_mostrar_todos_los_productos.grid(column=1, row=6, 
+                                          padx=PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS, 
+                                          pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                          sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
+    def mostrarTodosLosProductos(self):
+        """
+        Muestra todos los productos en la tabla, limpiando cualquier filtro o búsqueda previa.
+        """
+        # Limpia los campos antes de cargar los datos
+        self.limpiarCamposProductos()
+
+        # Borra todas las filas existentes en la tabla
+        funciones_útiles.borrarTodasLasFilas(self.tabla_productos)
+
+        # Actualiza 'self.datos' con todos los productos de la base de datos
+        self.datos = self.base_de_datos.consultarDatosProductos()
+
+        # Carga todos los datos en la tabla
+        self.cargarTablaProducto()  # Llama a la función que SÍ usa self.datos
 
     def buscarProducto(self):
         código = self.código.get().strip()
@@ -619,7 +713,28 @@ class Aplicación(tk.Tk):
 
         """
         funciones_útiles.borrarTodasLasFilas(self.tabla_productos)  # Elimina todas las filas existentes de la tabla.
+        self.actualizarTablaStockAlerta() # Refresca también la tabla de alertas
         self.cargarTablaProducto()  # Carga los datos en la tabla (desde 'self.datos').
+
+    def actualizarTablaStockAlerta(self):
+        """
+        Limpia la tabla de stock en alerta y la recarga con productos
+        cuyo stock actual es menor o igual al stock mínimo.
+        """
+        # 1. Limpiar tabla de alertas
+        funciones_útiles.borrarTodasLasFilas(self.tabla_stock_alerta)
+        
+        # 2. Si self.datos (de la carga principal) está vacío, no hacer nada
+        if not self.datos:
+            return
+
+        
+        stock_en_alerta = self.base_de_datos.consultarProductosPorPorcentajeStock()
+        
+        # 4. Cargar datos filtrados en la tabla de alertas
+        if stock_en_alerta:
+            for producto_alerta in stock_en_alerta:
+                self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta)
 
     def cargarTablaProducto(self):
         

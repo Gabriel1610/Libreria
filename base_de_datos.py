@@ -244,7 +244,7 @@ class BaseDeDatos:
             consulta = """SELECT codigo, nombre, precio_venta, stock_actual, 
                                  stock_minimo, descripcion, id_producto
                           FROM PRODUCTO
-                          WHERE LOWER(nombre) LIKE %s
+                          WHERE LOWER(nombre COLLATE utf8mb4_bin) LIKE %s
                           ORDER BY nombre; 
                        """
             
@@ -279,7 +279,139 @@ class BaseDeDatos:
             if conexión and conexión.is_connected():
                 conexión.close()
                 logger.info("Conexión a la base de datos cerrada.")
+
+    def buscarProductoPorDescripción(self, descripción):
+        """
+        Busca productos en la tabla PRODUCTO cuya descripción contenga el término de búsqueda.
+        La búsqueda ignora mayúsculas y minúsculas.
+
+        Args:
+            descripción (str): El término de búsqueda para la descripción del producto.
+
+        Returns:
+            list: Una lista de tuplas con los datos de los productos encontrados.
+                  El orden de las tuplas es:
+                  (codigo, nombre, precio_venta, stock_actual, 
+                   stock_minimo, descripcion, id_producto)
+            None: Si ocurre un error.
+        """
+        logger = logging.getLogger(__name__)  # Obtener el logger
+        conexión = None
+        cursor = None
+
+        try:
+            conexión = self.abrir()  # Abrir la conexión
+            cursor = conexión.cursor()
+            
+            # Prepara el término de búsqueda para SQL LIKE (case-insensitive)
+            # Añadimos '%' para que busque 'descripción' en cualquier parte de la cadena
+            término_búsqueda = f"%{descripción.lower()}%"
+
+            # Consulta para seleccionar productos por descripción (case-insensitive y contenido)
+            # El orden de las columnas coincide con 'consultarDatosProductos'
+            consulta = """SELECT codigo, nombre, precio_venta, stock_actual, 
+                                 stock_minimo, descripcion, id_producto
+                          FROM PRODUCTO
+                          WHERE LOWER(descripcion COLLATE utf8mb4_bin) LIKE %s
+                          ORDER BY nombre; 
+                       """
+            
+            # Ejecutar la consulta pasando el término de búsqueda
+            cursor.execute(consulta, (término_búsqueda,))
+            
+            productos = cursor.fetchall() # Obtener todos los resultados
+            
+            if productos:
+                logger.info(f"Se encontraron {len(productos)} productos con la descripción '{descripción}'.")
+            else:
+                # Esto no es un error, simplemente no hubo coincidencias
+                logger.info(f"No se encontró ningún producto que contenga '{descripción}'.")
                 
+            return productos # Devuelve la lista de productos (puede estar vacía)
+
+        except mysql.connector.Error as err:
+            # Registra un error específico de MySQL
+            logger.exception(f"Error de MySQL durante la búsqueda por descripción '{descripción}':")
+            return None # Devuelve None en caso de error
+
+        except Exception as e:
+            # Registra cualquier otro error inesperado
+            logger.exception(f"Error inesperado durante la búsqueda por descripción '{descripción}':")
+            return None # Devuelve None en caso de error
+
+        finally:
+            # Este bloque se ejecuta siempre
+            if cursor:
+                cursor.close()
+                logger.debug("Cursor cerrado.")
+            if conexión and conexión.is_connected():
+                conexión.close()
+                logger.info("Conexión a la base de datos cerrada.")
+
+    def consultarProductosPorPorcentajeStock(self):
+        """
+        Consulta y devuelve productos ordenados por el porcentaje de
+        stock actual sobre el stock mínimo, de menor a mayor.
+
+        Incluye todos los productos, incluso aquellos con stock >= 100%.
+        Los productos con stock_minimo = 0 se envían al final de la lista.
+
+        Returns:
+            list: Una lista de tuplas con los datos del producto:
+                  (codigo, nombre, precio_venta, stock_actual, stock_minimo)
+                  Retorna None si ocurre un error.
+        """
+        logger = logging.getLogger(__name__)
+        conexión = None
+        cursor = None
+        
+        try:
+            # 1. Abre la conexión a la base de datos
+            conexión = self.abrir()
+            cursor = conexión.cursor()
+            
+            # 2. Base de la consulta SQL
+            # Se calcula el ratio (stock_actual / stock_minimo)
+            # Se usa CASE para evitar la división por cero si stock_minimo es 0.
+            # Esos productos (con min_stock=0) se tratan como "infinitamente"
+            # seguros y se envían al final de la lista (ASC).
+            consulta = """SELECT 
+                             codigo, 
+                             nombre,
+                             stock_actual, 
+                             stock_minimo
+                          FROM 
+                             PRODUCTO
+                          ORDER BY
+                             CASE
+                                 WHEN stock_minimo = 0 THEN 9999999.99
+                                 ELSE (stock_actual / stock_minimo)
+                             END ASC;
+                       """
+            
+            # 3. Ejecución de la consulta
+            cursor.execute(consulta)
+            filas = cursor.fetchall()
+            logger.info(f"Se consultaron {len(filas)} productos (ordenados por % stock).")
+            return filas
+        
+        except mysql.connector.Error as err:
+            logger.exception("Error de MySQL al consultar productos por porcentaje de stock:")
+            return None
+        except Exception as e:
+            # 4. Manejo de excepciones
+            logger.exception(f"Error inesperado al consultar productos por porcentaje de stock: {e}")
+            return None
+
+        finally:
+            # 5. Asegura que la conexión se cierre
+            if cursor:
+                cursor.close()
+                logger.debug("Cursor cerrado.")
+            if 'conexión' in locals() and conexión and conexión.is_connected():
+                conexión.close()
+                logger.info("Conexión a la base de datos cerrada.")
+
     def consultarDatosProductos(self):
         """
         Consulta y devuelve todos los productos de la tabla PRODUCTO.

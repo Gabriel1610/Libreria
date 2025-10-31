@@ -52,3 +52,27 @@ CREATE TABLE IF NOT EXISTS DETALLE_VENTA (
         ON DELETE RESTRICT -- No permite borrar un producto si ya está en una venta
         ON UPDATE CASCADE
 ) ENGINE=InnoDB;
+
+SELECT * FROM PRODUCTO;
+
+-- Asegúrate de estar usando la base de datos correcta
+USE tienda_db;
+
+-- Inserción de múltiples productos de librería y artículos escolares
+INSERT INTO PRODUCTO 
+    (codigo, nombre, descripcion, precio_venta, stock_actual, stock_minimo)
+VALUES
+    ('ESC-001', 'Cuaderno Rivadavia A4 Tapa Dura Rayado', 'Cuaderno A4 tapa dura, 100 hojas rayadas.', 8500.00, 150, 25),
+    ('ESC-002', 'Birome BIC Trazo Fino Azul', 'Birome clásica BIC, color azul, trazo fino 1.0mm.', 1100.50, 500, 50),
+    ('ESC-003', 'Lápiz Negro Faber-Castell HB', 'Lápiz de grafito HB, ideal para escritura y dibujo.', 950.00, 400, 50),
+    ('ESC-004', 'Goma de Borrar Staedtler Blanca', 'Goma de borrar blanca de alta calidad, no deja mancha.', 1400.00, 300, 40),
+    ('ESC-005', 'Resaltador Stabilo Boss Amarillo', 'Resaltador color amarillo fluorescente, punta biselada.', 2800.00, 200, 30),
+    ('ESC-006', 'Carpeta 3 Anillos A4 Color Liso', 'Carpeta de 3 anillos tamaño A4, cubierta plástica color rojo.', 6200.00, 100, 15),
+    ('ESC-007', 'Repuesto Hojas Rivadavia N°3 Rayado', 'Bloque de 96 hojas rayadas N°3 con banda reforzada.', 4500.00, 250, 30),
+    ('ESC-008', 'Tijera Escolar Maped 13cm Punta Redonda', 'Tijera de 13cm con punta redonda, segura para niños.', 3100.00, 80, 10),
+    ('LIB-001', 'El Aleph - Jorge Luis Borges', 'Colección de cuentos por Jorge Luis Borges. Edición de bolsillo.', 25500.00, 30, 5),
+    ('LIB-002', 'Cien Años de Soledad - G. García Márquez', 'Novela clásica de Gabriel García Márquez. Tapa blanda.', 27800.00, 25, 5),
+    ('VAR-001', 'Mochila Escolar Jansport Negra', 'Mochila Jansport clásica, color negro, un compartimento.', 95000.00, 20, 3),
+    ('VAR-002', 'Cartuchera Canopla 2 Cierres', 'Cartuchera tipo canopla con dos compartimentos y cierres.', 18000.00, 60, 10),
+    ('ESC-009', 'Sacapuntas Maped con Depósito', 'Sacapuntas plástico con depósito para virutas.', 1950.00, 150, 20),
+    ('ESC-010', 'Set 12 Lápices de Colores Largos Faber-Castell', 'Caja de 12 lápices de colores, mina resistente.', 7200.00, 100, 15);
