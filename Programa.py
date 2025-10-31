@@ -138,11 +138,16 @@ class Aplicación(tk.Tk):
                 print(f"Advertencia: No se encontró el archivo de ícono en {ruta_icono}")
             # --- Fin del código para el ícono ---
 
+            self.datos = []  # Lista para almacenar los datos que se mostrarán en la tabla.
+
         # --- Inicialización de variables y objetos ---
             self.base_de_datos = base_de_datos.BaseDeDatos()  # Crea una instancia de la clase BaseDeDatos.
             self.hilos = []  # Lista para almacenar los hilos que se creen.
             self.evento_cancelar = threading.Event()  # Evento para cancelar hilos.
-        
+
+            # Carga los datos en la tabla productos (en un hilo separado).
+            self.cargarDatosEnTablaEnHilo()
+            
         #Crea un widget Notebook, que permite tener varias pestañas
             self.cuaderno = ttk.Notebook(self)  
             
@@ -538,6 +543,96 @@ class Aplicación(tk.Tk):
         # Devuelve el resultado final de todas las validaciones
         return producto_válido
     
+    def actualizarTablaProductos(self):
+        """
+        Actualiza la tabla de productos, eliminando las filas existentes y volviendo a cargar los datos.
+
+        Este método borra todas las filas que estén actualmente en la tabla y luego
+        vuelve a cargar los datos desde la variable 'self.datos', que se espera que
+        haya sido previamente poblada (por ejemplo, mediante 'cargarDatosEnTablaEnHilo').
+        Esencialmente, refresca la vista de la tabla con los datos más recientes.
+
+        """
+        funciones_útiles.borrarTodasLasFilas(self.tabla_productos)  # Elimina todas las filas existentes de la tabla.
+        self.cargarTabla()  # Carga los datos en la tabla (desde 'self.datos').
+
+    def cargarTabla(self):
+        """
+        Carga los datos de los movimientos (almacenados en self.datos) en la tabla de la interfaz.
+
+        Aplica formato condicional (colores) a las filas según si son deuda o haber.
+        Formatea las fechas y montos para su correcta visualización.
+
+        Itera sobre cada movimiento en self.datos:
+            - Extrae y formatea la fecha, el monto, el medio de pago, las cuotas, etc.
+            - Maneja los casos especiales de fechas de vencimiento nulas o 'todo pagado'.
+            - Determina si el movimiento es en pesos o dólares.
+            - Inserta la fila en la tabla con la etiqueta 'deuda' o 'haber'.
+        
+        # Configura el color de fondo para las filas con etiqueta "deuda" (rojo).
+        self.tabla_movimientos.tag_configure("deuda", background="red")
+        # Configura el color de fondo para las filas con etiqueta "haber" (verde).
+        self.tabla_movimientos.tag_configure("haber", background="#37C11E")
+        # Inicializa la lista 'valores' que contendrá los datos de cada fila.
+        valores = []
+
+        for dato in self.datos:  # Itera sobre cada movimiento en self.datos.
+            # Crea una lista con: Fecha (formateada), Monto absoluto (formateado a 2 decimales),
+            # un guión para la columna de "haber" o "debe", y el Medio de Pago.
+            valores = [dato[ÍNDICE_FECHA_COMPRA_BD].strftime(FORMATO_PREFERIDO_FECHA), f"{math.fabs(float(dato[ÍNDICE_IMPORTE_TOTAL_BD])):.2f}", '-', f"{math.fabs(float(dato[ÍNDICE_IMPORTE_CUOTAS_BD])):.2f}", dato[ÍNDICE_NOMBRE_MEDIO_PAGO_BD]]
+
+            if dato[ÍNDICE_NOMBRE_MEDIO_PAGO_BD] == 'Efectivo':
+                valores.append('-')  # Si es efectivo, agrega un guión en la columna de cuotas.
+            else:
+                valores.append(dato[ÍNDICE_CUOTAS_BD])  # Si no, agrega el valor de las cuotas.
+
+            # Manejo de la columna 'Vencimiento':
+            if dato[ÍNDICE_PRÓX_VENC_BD] is None:
+                valores.append('no hay')  # Si no hay fecha de vencimiento, pone "no hay".
+            elif dato[ÍNDICE_PRÓX_VENC_BD] not in ('-', 'todo pagado', 'faltante'):
+                # Si hay una fecha válida, la formatea a dd/mm/aaaa.
+                valores.append(datetime.strptime(dato[ÍNDICE_PRÓX_VENC_BD], FORMATO_FECHA_BD).date().strftime(FORMATO_PREFERIDO_FECHA))
+            else:
+                valores.append(dato[ÍNDICE_PRÓX_VENC_BD])  # Si es '-' o 'todo pagado', lo agrega tal cual.
+
+            valores.append(dato[ÍNDICE_DESCRIPCIÓN_BD])  # Agrega la descripción.
+            valores.append('pesos')  # Agrega 'pesos' por defecto.
+
+            # Si dato[ÍNDICE_EN_DÓLARES_BD] es True, significa que es un movimiento en dólares.
+            if dato[ÍNDICE_EN_DÓLARES_BD]:
+                valores[ÍNDICE_IMPORTE_DÓLARES_TABLA] = valores[ÍNDICE_IMPORTE_PESOS_TABLA]  # Intercambia "Debe" y "Haber".
+                valores[ÍNDICE_IMPORTE_PESOS_TABLA] = '-'
+                valores[-1] = 'dólares'  # Cambia la moneda a 'dólares'.
+
+            valores.append(dato[ÍNDICE_CÓD_MOV_BD]) # Agrega el código del movimiento
+
+            # Inserta la fila en la tabla.  Aplica la etiqueta "deuda" o "haber".
+            if dato[ÍNDICE_INDICADOR_DEUDA_HABER_BD]:
+                self.tabla_movimientos.insert('', tk.END, values=valores, tag="deuda")
+            else:
+                self.tabla_movimientos.insert('', tk.END, values=valores, tag="haber")"""
+
+    def cargarDatosEnTablaEnHilo(self):
+        def cargar_datos():
+            try:
+                # Obtiene los datos de la base de datos.
+                self.datos = self.base_de_datos.consultarDatosProductos()
+                # Programa la actualización de la tabla en el hilo principal.
+                # Usa 'ventana.after(0, ...)' para ejecutar 'actualizarTablaProductos'
+                # tan pronto como sea posible en el hilo principal.
+                self.ventana.after(0, self.actualizarTablaProductos)  # Actualizar la interfaz en el hilo principal
+            except Exception as e:
+                # Maneja cualquier error que ocurra durante la carga de datos.
+                print(f"Error al cargar datos: {e}")  # Imprime un mensaje de error.
+
+        # Crea un hilo secundario para la función 'cargar_datos'.
+        # 'daemon=True' asegura que el hilo se cierre cuando la aplicación principal se cierre.
+        hilo = threading.Thread(target=cargar_datos, daemon=True)
+        # Agrega el hilo a la lista de hilos para mantener una referencia.
+        self.hilos.append(hilo)
+        # Inicia la ejecución del hilo.
+        hilo.start()
+
     def editarProducto(self):
         """
         Edita un movimiento existente en la base de datos si la entrada es válida.

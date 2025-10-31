@@ -13,7 +13,7 @@ POS_ONEDRIVE_NOTEBOOK_POSADAS = 'D:/'
 POS_ONEDRIVE_NOTEBOOK_RESISTENCIA = 'C:/Users/Gabriel/'
 DISCO_PORTÁTIL = 'E:\\'
 NOMBRE_EQUIPO_POSADAS = 'NOTEBOOK-POSADAS'
-NOMBRE_CARPETA_RESPALDO_BASE_DE_DATOS = 'OneDrive/Computadora/Documents/Programas/Deuda con interfaz/Respaldo de la base de datos'
+NOMBRE_CARPETA_RESPALDO_BASE_DE_DATOS = r'C:\Users\Gabriel\OneDrive\Computadora\Facultad\UTN\Resistencia\Práctica profesional\2025\Trabajo\Programa\Respaldo de la base de datos'
 NOMBRE_CARPETA_RESPALDO_BASE_DE_DATOS_PRUEBA = 'OneDrive/Computadora/Documents/Programas/Deuda con interfaz/Respaldo base de datos prueba'
 RESPALDAR = True
 FORMATO_PREFERIDO_FECHA = '%d/%m/%Y'
@@ -72,15 +72,6 @@ def obtenerNombreEquipo():
             # Último recurso (Windows)
             nombre = os.environ.get("COMPUTERNAME")
     return nombre
-
-def obtenerUbicaciónNotebook():
-    nombre_notebook_actual = obtenerNombreEquipo()
-    en_resistencia = nombre_notebook_actual != NOMBRE_EQUIPO_POSADAS
-    if en_resistencia:
-        ubicación_en_notebook = POS_ONEDRIVE_NOTEBOOK_RESISTENCIA
-    else:
-        ubicación_en_notebook = POS_ONEDRIVE_NOTEBOOK_POSADAS
-    return ubicación_en_notebook
 
 def chequearConexiónAInternet():
     try:
@@ -222,11 +213,7 @@ def crearHiloRespaldarBaseDeDatos(base_de_datos):
         hilo.start()
     
 def respaldarBaseDeDatos(base_de_datos):
-    ubicación_notebook = obtenerUbicaciónNotebook()
-    if RESPALDAR:
-        base_de_datos.respaldarBaseDeDatos(ubicación_notebook + NOMBRE_CARPETA_RESPALDO_BASE_DE_DATOS)
-    else:
-        base_de_datos.respaldarBaseDeDatos(ubicación_notebook + NOMBRE_CARPETA_RESPALDO_BASE_DE_DATOS_PRUEBA)
+    base_de_datos.respaldarBaseDeDatos(NOMBRE_CARPETA_RESPALDO_BASE_DE_DATOS)
 
 def controlar_caracteres_precio(importe, entrada_importe, event=None):
     """
