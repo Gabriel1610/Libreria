@@ -43,6 +43,8 @@ PADX_ETIQUETA_NOMBRE_PRODUCTOS = 0
 PADY_ETIQUETA_NOMBRE_PRODUCTOS = 0  # Padding específico para la etiqueta nombre
 PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS = (50, 0)
 
+ANCHO_COLUMNA_NOMBRE_PRODUCTOS = 480
+
 PADX_ETIQUETA_PRECIO_PRODUCTOS = 0
 PADY_ETIQUETA_PRECIO_PRODUCTOS = 0  # Padding específico para la etiqueta precio
 PADX_ENTRADA_IZQUIERDA_PRECIO_PRODUCTOS = (50, 0)
@@ -156,10 +158,11 @@ class Aplicación(tk.Tk):
             #Crea la primera página del cuaderno (pestaña "Productos").
             self.página_cuaderno_productos = ttk.Frame(self.cuaderno)
 
-            self.página_cuaderno_productos.grid_columnconfigure(0, weight=1)
-            self.página_cuaderno_productos.grid_columnconfigure(1, weight=0)
+            self.página_cuaderno_productos.grid_columnconfigure(0, weight=0)
+            self.página_cuaderno_productos.grid_columnconfigure(1, weight=1)
 
-            self.página_cuaderno_productos.grid_rowconfigure(0, weight=1)
+            self.página_cuaderno_productos.grid_rowconfigure(1, weight=1)
+            self.página_cuaderno_productos.grid_rowconfigure(4, weight=1)
 
             # Establece un ancho mínimo para la segunda columna (índice 1) de la grilla
             # dentro de la página de productos. Esto asegura que la columna tenga
@@ -208,6 +211,15 @@ class Aplicación(tk.Tk):
     
     def crearTablaConProductos(self):
 
+        # --- 1. Crear la Etiqueta ---
+        self.etiqueta_título_labelframe_productos = ttk.Label(self.página_cuaderno_productos, 
+                                               text="Productos", 
+                                               font=FUENTE_TÍTULO_PRODUCTOS) # Re-usamos la fuente
+        
+        # Posicionar la etiqueta (Fila 4, debajo del formulario)
+        self.etiqueta_título_labelframe_productos.grid(column=0, row=0, columnspan=2, 
+                                        padx=5, pady=(2, 2), sticky="w")
+        
         columnas = (
             'código',
             'nombre',
@@ -221,7 +233,7 @@ class Aplicación(tk.Tk):
             self.página_cuaderno_productos,
             columns=columnas,
             show='headings',
-            height=7
+            height=5
         )
 
         self.tabla_productos.heading('código', text='Código')
@@ -232,7 +244,7 @@ class Aplicación(tk.Tk):
         self.tabla_productos.heading('descripción', text='Descripción', anchor='w')
 
         self.tabla_productos.grid(
-            row=0,
+            row=1,
             column=0,
             columnspan=2,
             sticky='ns'
@@ -248,8 +260,8 @@ class Aplicación(tk.Tk):
         self.tabla_productos.column(
             "nombre",
             anchor='w',
-            width=400,
-            minwidth=400,
+            width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS,
+            minwidth=ANCHO_COLUMNA_NOMBRE_PRODUCTOS,
             stretch=tk.NO
         )
         self.tabla_productos.column(
@@ -295,8 +307,8 @@ class Aplicación(tk.Tk):
         self.tabla_productos.configure(xscrollcommand=self.barra_desplazamiento_horizontal.set)
         self.tabla_productos.configure(yscrollcommand=self.barra_desplazamiento_vertical.set)
 
-        self.barra_desplazamiento_vertical.grid(row=0, column=2, sticky='ns')
-        self.barra_desplazamiento_horizontal.grid(row=1, column=0, columnspan=2, sticky='we')
+        self.barra_desplazamiento_vertical.grid(row=1, column=2, sticky='ns')
+        self.barra_desplazamiento_horizontal.grid(row=2, column=0, columnspan=2, sticky='we')
 
         self.tabla_productos.bind("<<TreeviewSelect>>", self.cargarRegistros)
     
@@ -313,8 +325,8 @@ class Aplicación(tk.Tk):
                                                font=FUENTE_TÍTULO_PRODUCTOS) # Re-usamos la fuente
         
         # Posicionar la etiqueta (Fila 4, debajo del formulario)
-        self.etiqueta_stock_alerta.grid(column=0, row=2, columnspan=2, 
-                                        padx=10, pady=(20, 5), sticky="w")
+        self.etiqueta_stock_alerta.grid(column=1, row=3, columnspan=2, 
+                                        padx=10, pady=(0, 0), sticky="w")
 
         # --- 2. Definir Columnas ---
         columnas_stock = ('código', 'nombre', 'stock_actual', 'stock_mínimo')
@@ -334,8 +346,9 @@ class Aplicación(tk.Tk):
 
         # --- 4. Posicionar la Tabla ---
         self.tabla_stock_alerta.grid(
-            row=3,
-            column=0,
+            row=4,
+            column=1,
+            padx=(10, 0),
             columnspan=2, # Ocupa todo el ancho horizontal
             sticky='nsew' # Se expande para llenar el espacio
         )
@@ -343,7 +356,7 @@ class Aplicación(tk.Tk):
         # --- 5. Definir Anchos de Columna ---
         # (Ajustados para que la tabla se expanda)
         self.tabla_stock_alerta.column("código", anchor='w', width=150, stretch=tk.NO)
-        self.tabla_stock_alerta.column("nombre", anchor='w', width=400) # Se estira
+        self.tabla_stock_alerta.column("nombre", anchor='w', width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS, stretch=tk.NO) # Se estira
         self.tabla_stock_alerta.column("stock_actual", anchor='center', width=100, stretch=tk.NO)
         self.tabla_stock_alerta.column("stock_mínimo", anchor='center', width=100, stretch=tk.NO)
         
@@ -363,8 +376,8 @@ class Aplicación(tk.Tk):
         self.tabla_stock_alerta.configure(yscrollcommand=self.barra_desplazamiento_vertical_stock.set)
 
         # Posicionar scrollbars
-        self.barra_desplazamiento_vertical_stock.grid(row=3, column=2, sticky='ns')
-        self.barra_desplazamiento_horizontal_stock.grid(row=4, column=0, columnspan=2, sticky='we')
+        self.barra_desplazamiento_vertical_stock.grid(row=4, column=3, sticky='ns')
+        self.barra_desplazamiento_horizontal_stock.grid(row=5, column=1, columnspan=2, sticky='we')
 
     def crearLabelFrameProductos(self):
         # --- Creación de Widgets ---
@@ -375,7 +388,7 @@ class Aplicación(tk.Tk):
         self.labelframe_productos = ttk.LabelFrame(self.página_cuaderno_productos, 
                                                 labelwidget=self.etiqueta_título_labelframe_productos)
 
-        self.labelframe_productos.grid(column=0, row=6, rowspan=2, 
+        self.labelframe_productos.grid(column=0, row=3, rowspan=2, 
                                     padx=PADX_ETIQUETA_NOMBRE_PRODUCTOS, 
                                     pady=PADY_ETIQUETA_NOMBRE_PRODUCTOS,
                                     sticky=STICKY_LABELFRAME_PRODUCTOS)
