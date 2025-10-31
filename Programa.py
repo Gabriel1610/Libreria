@@ -638,6 +638,7 @@ class Aplicación(tk.Tk):
                 self.botón_editar_productos.config(state='enabled')
                 self.botón_eliminar_productos.config(state='enabled')
                 self.botón_limpiar_productos.config(state="enabled")
+                self.botón_añadir_productos.config(state='enabled')
 
                 # 6. Calcula y muestra los caracteres restantes para la descripción.
                 descripción_actual = datos[5]
@@ -689,7 +690,56 @@ class Aplicación(tk.Tk):
             # (FIN DE BLOQUE CORREGIDO)
     
     def eliminarProducto(self):
-        ...
+        """
+        Elimina el producto seleccionado de la base de datos y actualiza la interfaz.
+
+        Esta función se ejecuta cuando el usuario hace clic en el botón "Eliminar".
+        Realiza las siguientes acciones:
+
+        1. Obtiene el ítem seleccionado de la 'tabla_productos'.
+        2. Pide confirmación al usuario antes de borrar.
+        3. Si se confirma:
+           - Extrae el 'id_producto' (que es el último valor en la lista 'values').
+           - Llama a la función 'eliminarProductoPorID' de la base de datos.
+           - Limpia los campos del formulario de productos.
+           - Inicia un hilo para respaldar la base de datos.
+           - Recarga los datos en la 'tabla_productos'.
+        """
+        
+        item_seleccionado = self.tabla_productos.focus()  # Obtiene el ítem seleccionado de la tabla.
+
+        if item_seleccionado:  # Verifica si hay un ítem seleccionado.
+            
+            # Pedir confirmación al usuario es una buena práctica antes de eliminar
+            respuesta = messagebox.askyesno("Confirmar Eliminación", 
+                                            "¿Está seguro de que desea eliminar este producto permanentemente?")
+            
+            if respuesta: # Si el usuario hizo clic en "Sí"
+                try:
+                    # Obtiene los valores del item seleccionado
+                    datos = self.tabla_productos.item(item_seleccionado)['values'] 
+                    
+                    # El id_producto es el último elemento en la lista 'values'
+                    # (según cómo se carga en 'cargarTablaProducto' y se usa en 'editarProducto')
+                    id_del_producto = datos[-1]
+                    
+                    # Llama a la función de la base de datos para eliminar el producto.
+                    self.base_de_datos.eliminarProductoPorID([id_del_producto]) 
+                    
+                    # Limpia los campos del formulario de productos.
+                    self.limpiarCamposProductos()  
+                    
+                    # Respalda la base de datos (en un hilo).
+                    funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)  
+                    
+                    # Recarga los datos en la tabla (en un hilo).
+                    self.cargarDatosEnTablaEnHilo()  
+                    
+                    messagebox.showinfo("Éxito", "Producto eliminado correctamente.")
+                
+                except Exception as e:
+                    messagebox.showerror("Error al Eliminar", 
+                                         f"No se pudo eliminar el producto: {str(e)}")
     
     def limpiarCamposProductos(self):
         self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.
