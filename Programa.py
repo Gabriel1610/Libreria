@@ -162,7 +162,8 @@ class Aplicación(tk.Tk):
             self.página_cuaderno_productos.grid_columnconfigure(1, weight=1)
 
             self.página_cuaderno_productos.grid_rowconfigure(1, weight=1)
-            self.página_cuaderno_productos.grid_rowconfigure(4, weight=1)
+            self.página_cuaderno_productos.grid_rowconfigure(4, weight=0)
+            self.página_cuaderno_productos.grid_rowconfigure(3, weight=0)
 
             # Establece un ancho mínimo para la segunda columna (índice 1) de la grilla
             # dentro de la página de productos. Esto asegura que la columna tenga
@@ -335,16 +336,19 @@ class Aplicación(tk.Tk):
             self.página_cuaderno_productos,
             columns=columnas_stock,
             show='headings',
-            height=5  # Altura para la tabla de alertas
+            height=12  # Altura para la tabla de alertas
         )
 
-        # --- 3. Definir Encabezados ---
+        # 3. Configurar el tag para la alerta (texto rojo)
+        self.tabla_stock_alerta.tag_configure('alerta', foreground='red')
+
+        # --- 4. Definir Encabezados ---
         self.tabla_stock_alerta.heading('código', text='Código', anchor='w')
         self.tabla_stock_alerta.heading('nombre', text='Nombre', anchor='w')
         self.tabla_stock_alerta.heading('stock_actual', text='Stock actual', anchor='center')
         self.tabla_stock_alerta.heading('stock_mínimo', text='Stock mínimo', anchor='center')
 
-        # --- 4. Posicionar la Tabla ---
+        # --- 5. Posicionar la Tabla ---
         self.tabla_stock_alerta.grid(
             row=4,
             column=1,
@@ -353,14 +357,14 @@ class Aplicación(tk.Tk):
             sticky='nsew' # Se expande para llenar el espacio
         )
 
-        # --- 5. Definir Anchos de Columna ---
+        # --- 6. Definir Anchos de Columna ---
         # (Ajustados para que la tabla se expanda)
         self.tabla_stock_alerta.column("código", anchor='w', width=150, stretch=tk.NO)
         self.tabla_stock_alerta.column("nombre", anchor='w', width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS, stretch=tk.NO) # Se estira
         self.tabla_stock_alerta.column("stock_actual", anchor='center', width=100, stretch=tk.NO)
         self.tabla_stock_alerta.column("stock_mínimo", anchor='center', width=100, stretch=tk.NO)
         
-        # --- 6. Scrollbars para la nueva tabla ---
+        # --- 7. Scrollbars para la nueva tabla ---
         self.barra_desplazamiento_vertical_stock = ttk.Scrollbar(
             self.página_cuaderno_productos,
             orient=tk.VERTICAL,
@@ -388,7 +392,7 @@ class Aplicación(tk.Tk):
         self.labelframe_productos = ttk.LabelFrame(self.página_cuaderno_productos, 
                                                 labelwidget=self.etiqueta_título_labelframe_productos)
 
-        self.labelframe_productos.grid(column=0, row=3, rowspan=2, 
+        self.labelframe_productos.grid(column=0, row=3, rowspan=3, 
                                     padx=PADX_ETIQUETA_NOMBRE_PRODUCTOS, 
                                     pady=PADY_ETIQUETA_NOMBRE_PRODUCTOS,
                                     sticky=STICKY_LABELFRAME_PRODUCTOS)
@@ -456,7 +460,9 @@ class Aplicación(tk.Tk):
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
 
-        self.entrada_stock.bind(EVENTO_TECLA_PRESIONADA, self.controlar_caracteres_stock)
+        self.entrada_stock.bind(EVENTO_TECLA_PRESIONADA, 
+                                lambda event, widget=self.entrada_stock, var=self.stock: 
+                                self.controlar_caracteres_stock(event, widget, var))
 
         # --- Stock Mínimo ---
         self.etiqueta_stock_mínimo = ttk.Label(self.labelframe_productos, text=ETIQUETA_STOCK_MÍNIMO_TEXTO_PRODUCTOS)
@@ -472,6 +478,10 @@ class Aplicación(tk.Tk):
                                         padx=PADX_ENTRADA_IZQUIERDA_STOCK_MÍNIMO_PRODUCTOS, 
                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        
+        self.entrada_stock_mínimo.bind(EVENTO_TECLA_PRESIONADA, 
+                                       lambda event, widget=self.entrada_stock_mínimo, var=self.stock_mínimo: 
+                                       self.controlar_caracteres_stock(event, widget, var))
 
         # --- Descripción (en Columna 1) ---
         self.etiqueta_descripción = ttk.Label(self.labelframe_productos, 
@@ -750,7 +760,10 @@ class Aplicación(tk.Tk):
         # 4. Cargar datos filtrados en la tabla de alertas
         if stock_en_alerta:
             for producto_alerta in stock_en_alerta:
-                self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta)
+                if int(producto_alerta[2]) <= int(producto_alerta[3]):  # stock_actual <= stock_mínimo
+                    self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta, tags=('alerta',))
+                else:
+                    self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta)
 
     def cargarTablaProducto(self):
         
@@ -1057,13 +1070,21 @@ class Aplicación(tk.Tk):
             retornar = None
         return retornar
     
-    def controlar_caracteres_stock(self, event = None):
+    def controlar_caracteres_stock(self, event, entry_widget, string_var):
+        """
+        Valida que solo se ingresen números enteros en un campo de entrada.
+        
+        Args:
+            event (tk.Event): El evento de teclado.
+            entry_widget (tk.Entry): El widget de entrada que disparó el evento.
+            string_var (tk.StringVar): La variable de control asociada al widget.
+        """
         retornar = "break"  # Valor por defecto: evita la inserción del carácter.
         carácter = event.char  # Obtiene el carácter individual ingresado.
         tecla = event.keysym.lower()  # Obtiene la tecla presionada (en minúsculas).
 
         # Permite dígitos, teclas de navegación/edición y combinaciones Ctrl+X/C/V.
-        if carácter and carácter in '123456789':
+        if carácter and carácter in '0123456789':
             retornar = None  # Permite dígitos.
         elif (event and (event.keysym == 'BackSpace' or event.keysym.startswith('Shift') or \
                          event.keysym in ('Delete', 'Home', 'End', 'Up', 'Down', 'Left', 'Right'))) or \
@@ -1071,27 +1092,28 @@ class Aplicación(tk.Tk):
 
             # Maneja el pegado (Ctrl+V).
             if event.state & 0x0004 and tecla == 'v':
-                contenido_antes = self.cant_cuotas.get()  # Guarda el contenido actual.
-                posición_cursor_antes = self.entrada_cantidad_cuotas.index("insert")  # Guarda la posición del cursor.
+                # --- CÓDIGO MODIFICADO ---
+                contenido_antes = string_var.get()  # Guarda el contenido actual
+                posición_cursor_antes = entry_widget.index("insert")  # Guarda la posición
                 retornar = None  # Permite la inserción (temporalmente).
 
                 # Define una función para actualizar el contenido después del pegado.
                 def actualizar_contenido():
                     """
                     Valida y corrige el contenido después de un evento de pegado.
-                    Se asegura que el contenido sea un entero. Si no lo es,
-                    revierte al contenido anterior y reposiciona el cursor.
+                    Revierte si el contenido pegado no es un entero.
                     """
-                    contenido_después = self.cant_cuotas.get()  # Obtiene el contenido después del pegado.
+                    contenido_después = string_var.get()  # Obtiene el contenido
                     es_entero_natural = validación_tipo_de_datos.esEntero(contenido_después)
-                    if not es_entero_natural:  # Si el contenido no es un entero válido.
-                        self.cant_cuotas.set(contenido_antes)  # Restaura el contenido anterior.
-                        self.entrada_cantidad_cuotas.icursor(posición_cursor_antes)  # Restaura la posición.
+                    if not es_entero_natural:  # Si no es un entero válido
+                        string_var.set(contenido_antes)  # Restaura el contenido
+                        entry_widget.icursor(posición_cursor_antes)  # Restaura la posición
 
-                # Ejecuta 'actualizar_contenido' después de que Tkinter termine de procesar el evento.
-                self.entrada_cantidad_cuotas.after_idle(actualizar_contenido)
+                # Ejecuta 'actualizar_contenido' después de que Tkinter procese el evento.
+                entry_widget.after_idle(actualizar_contenido)
+                # --- FIN CÓDIGO MODIFICADO ---
             else:
-                retornar = None  # Permite otras teclas permitidas (Ctrl+X/C, navegación, etc.).
+                retornar = None  # Permite otras teclas (Ctrl+X/C, navegación, etc.).
         return retornar  # Retorna "break" si el carácter no es válido, None si es válido.
     
     def cerrarVentana(self):
