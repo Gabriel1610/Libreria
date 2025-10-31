@@ -113,6 +113,19 @@ PADX_BOTÓN_LIMPIAR_PRODUCTOS = (255, 0)
 PADX_BOTÓN_BUSCAR_PRODUCTOS = (10, 0)
 PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = (95, 0)
 
+# --- Constantes para la UI de venta de productos ---
+TÍTULO_LABELFRAME_VENTA = "Venta de producto"
+ETIQUETA_CÓDIGO_PRODUCTO_VENTA = "Código producto:"
+ETIQUETA_CANTIDAD_VENTA = "Cantidad:"
+BOTÓN_VER_PRECIO_VENTA = "Ver precio"
+BOTÓN_AGREGAR_CARRITO_VENTA = "Agregar al carrito"
+BOTÓN_QUITAR_CARRITO_VENTA = "Quitar del carrito"
+ANCHO_ENTRADA_CÓDIGO_VENTA = 20
+ANCHO_ENTRADA_CANTIDAD_VENTA = 10
+PADX_GENERAL_VENTA = 5
+PADY_GENERAL_VENTA = 5
+STICKY_WIDGET_OESTE_VENTA = "w"
+
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
 
@@ -186,6 +199,17 @@ class Aplicación(tk.Tk):
 
             # Crea la página de "Ventas" dentro del cuaderno de productos.
             self.página_cuaderno_ventas = ttk.Frame(self.cuaderno)
+            
+            self.página_cuaderno_ventas.grid_columnconfigure(0, weight=0) # Col 0 (tabla)
+            self.página_cuaderno_ventas.grid_columnconfigure(1, weight=0) # Col 1 (Scrollbar)
+            self.página_cuaderno_ventas.grid_columnconfigure(2, weight=0) # Col 2 (LabelFrame Venta) - NO SE ESTIRA
+            self.página_cuaderno_ventas.grid_columnconfigure(3, weight=1) # Col 3 (Espacio vacío) - SÍ SE ESTIRA
+            
+            self.página_cuaderno_ventas.grid_rowconfigure(0, weight=0) # Fila 0 (etiqueta y 1ra fila del LF)
+            self.página_cuaderno_ventas.grid_rowconfigure(1, weight=0) # Fila 1 (tabla y 2da fila del LF)
+            self.página_cuaderno_ventas.grid_rowconfigure(2, weight=1) # Fila 2 (scroll H tabla y 3ra fila del LF)
+            self.página_cuaderno_ventas.grid_rowconfigure(3, weight=0) # Fila 3 (Espacio vacío) - SÍ SE ESTIRA
+            
             self.cuaderno.add(self.página_cuaderno_ventas, text="Ventas")
 
             # Guarda los índices de las pestañas de "Productos" y "Ventas" para usarlos luego.
@@ -199,6 +223,8 @@ class Aplicación(tk.Tk):
             self.crearTablaConProductos()  # Crea la tabla principal.
             self.crearTablaStockAlerta()
             self.crearLabelFrameProductos() # Crea el LabelFrame para agregar productos.
+            self.crearTablaConVentas()
+            self.crearLabelFrameVentaProducto()
 
             # Configura la función que se ejecutará cuando se cierre la ventana.
             self.protocol("WM_DELETE_WINDOW", self.cerrarVentana)
@@ -383,6 +409,70 @@ class Aplicación(tk.Tk):
         # Posicionar scrollbars
         self.barra_desplazamiento_vertical_stock.grid(row=4, column=3, sticky='ns')
         self.barra_desplazamiento_horizontal_stock.grid(row=5, column=1, columnspan=2, sticky='we')
+
+    # (Justo después de la función crearTablaStockAlerta)
+
+    def crearTablaConVentas(self):
+        """
+        Crea la etiqueta y la tabla (Treeview) para mostrar el listado
+        de ventas en la pestaña de ventas.
+        """
+        
+        # --- 1. Crear la Etiqueta "Ventas" (Fila 0) ---
+        self.etiqueta_título_ventas = ttk.Label(self.página_cuaderno_ventas, 
+                                               text="Ventas", 
+                                               font=FUENTE_TÍTULO_PRODUCTOS) # Re-usamos la fuente
+        
+        # Posicionar la etiqueta (Fila 0, Col 0)
+        self.etiqueta_título_ventas.grid(column=0, row=0, 
+                                        padx=5, pady=(2, 2), sticky="w")
+
+        # --- 2. Definir Columnas ---
+        columnas_ventas = ('id', 'fecha_hora', 'total')
+
+        self.tabla_ventas = ttk.Treeview(
+            self.página_cuaderno_ventas,
+            columns=columnas_ventas,
+            show='headings',
+            height=15  # Altura de la tabla
+        )
+
+        # --- 3. Definir Encabezados ---
+        self.tabla_ventas.heading('id', text='ID', anchor='center')
+        self.tabla_ventas.heading('fecha_hora', text='Fecha y hora', anchor='center')
+        self.tabla_ventas.heading('total', text='Total', anchor='center')
+
+        # --- 4. Posicionar la Tabla (Fila 1, Col 0) ---
+        self.tabla_ventas.grid(
+            row=1,
+            column=0,
+            rowspan=2,
+            sticky='nsw' # Se expande verticalmente (ns) y se pega a la izquierda (w)
+        )
+
+        # --- 5. Definir Anchos de Columna (No expandibles) ---
+        self.tabla_ventas.column("id", anchor='center', width=80, stretch=tk.NO)
+        self.tabla_ventas.column("fecha_hora", anchor='w', width=200, stretch=tk.NO)
+        self.tabla_ventas.column("total", anchor='e', width=120, stretch=tk.NO)
+        
+        # --- 6. Scrollbars para la tabla de ventas ---
+        self.barra_desplazamiento_vertical_ventas = ttk.Scrollbar(
+            self.página_cuaderno_ventas,
+            orient=tk.VERTICAL,
+            command=self.tabla_ventas.yview
+        )
+        self.barra_desplazamiento_horizontal_ventas = ttk.Scrollbar(
+            self.página_cuaderno_ventas,
+            orient=tk.HORIZONTAL,
+            command=self.tabla_ventas.xview
+        )
+
+        self.tabla_ventas.configure(xscrollcommand=self.barra_desplazamiento_horizontal_ventas.set)
+        self.tabla_ventas.configure(yscrollcommand=self.barra_desplazamiento_vertical_ventas.set)
+
+        # --- 7. Posicionar scrollbars ---
+        self.barra_desplazamiento_vertical_ventas.grid(row=1, column=1, rowspan=2, sticky='wns')
+        self.barra_desplazamiento_horizontal_ventas.grid(row=3, column=0, sticky='we')
 
     def crearLabelFrameProductos(self):
         # --- Creación de Widgets ---
@@ -587,6 +677,93 @@ class Aplicación(tk.Tk):
         # Carga todos los datos en la tabla
         self.cargarTablaProducto()  # Llama a la función que SÍ usa self.datos
 
+    # (Después de la función crearTablaConVentas)
+
+    def crearLabelFrameVentaProducto(self):
+        """
+        Crea el LabelFrame para agregar productos a una venta en la pestaña 'Ventas'.
+        """
+        
+        # 1. Crear el LabelFrame (usando la nueva constante de título)
+        self.labelframe_venta_producto = ttk.LabelFrame(self.página_cuaderno_ventas, 
+                                                        text=TÍTULO_LABELFRAME_VENTA)
+        
+        # 2. Posicionar el LabelFrame
+        # Se ubica en la Col 2, y abarca las filas 0 y 1
+        self.labelframe_venta_producto.grid(column=2, row=0, rowspan=2, 
+                                            padx=PADX_GENERAL_VENTA, 
+                                            pady=PADY_GENERAL_VENTA,
+                                            sticky="wn") # Se pega arriba, no se expande
+
+        # --- Fila 0 (Interior) ---
+        
+        # Etiqueta "Código producto"
+        self.etiqueta_código_venta = ttk.Label(self.labelframe_venta_producto, 
+                                               text=ETIQUETA_CÓDIGO_PRODUCTO_VENTA)
+        self.etiqueta_código_venta.grid(column=0, row=0, 
+                                      padx=PADX_GENERAL_VENTA, 
+                                      pady=PADY_GENERAL_VENTA, 
+                                      sticky=STICKY_WIDGET_OESTE_VENTA)
+        
+        # Caja de texto (Código)
+        self.código_venta = tk.StringVar()
+        self.entrada_código_venta = tk.Entry(self.labelframe_venta_producto, 
+                                            width=ANCHO_ENTRADA_CÓDIGO_VENTA, 
+                                            textvariable=self.código_venta)
+        self.entrada_código_venta.grid(column=1, row=0, 
+                                      padx=PADX_GENERAL_VENTA, 
+                                      pady=PADY_GENERAL_VENTA, 
+                                      sticky=STICKY_WIDGET_OESTE_VENTA)
+
+        # Botón "Ver precio"
+        self.botón_ver_precio = ttk.Button(self.labelframe_venta_producto, 
+                                           text=BOTÓN_VER_PRECIO_VENTA)
+                                           # command=self.verPrecioProducto) # (Añadir comando después)
+        self.botón_ver_precio.grid(column=2, row=0, 
+                                   padx=PADX_GENERAL_VENTA, 
+                                   pady=PADY_GENERAL_VENTA, 
+                                   sticky=STICKY_WIDGET_OESTE_VENTA)
+
+        # --- Fila 1 (Interior) ---
+        
+        # Etiqueta "Cantidad"
+        self.etiqueta_cantidad_venta = ttk.Label(self.labelframe_venta_producto, 
+                                                 text=ETIQUETA_CANTIDAD_VENTA)
+        self.etiqueta_cantidad_venta.grid(column=0, row=1, 
+                                        padx=PADX_GENERAL_VENTA, 
+                                        pady=PADY_GENERAL_VENTA, 
+                                        sticky=STICKY_WIDGET_OESTE_VENTA)
+        
+        # Caja de texto (Cantidad)
+        self.cantidad_venta = tk.StringVar()
+        self.entrada_cantidad_venta = tk.Entry(self.labelframe_venta_producto, 
+                                              width=ANCHO_ENTRADA_CANTIDAD_VENTA, 
+                                              textvariable=self.cantidad_venta)
+        self.entrada_cantidad_venta.grid(column=1, row=1, 
+                                        padx=PADX_GENERAL_VENTA, 
+                                        pady=PADY_GENERAL_VENTA, 
+                                        sticky=STICKY_WIDGET_OESTE_VENTA)
+
+        # Botón "Agregar al carrito"
+        self.botón_agregar_carrito = ttk.Button(self.labelframe_venta_producto, 
+                                                text=BOTÓN_AGREGAR_CARRITO_VENTA)
+                                                # command=self.agregarAlCarrito) # (Añadir comando después)
+        self.botón_agregar_carrito.grid(column=2, row=1, 
+                                      padx=PADX_GENERAL_VENTA, 
+                                      pady=PADY_GENERAL_VENTA, 
+                                      sticky=STICKY_WIDGET_OESTE_VENTA)
+
+        # --- Fila 2 (Interior) ---
+        
+        # Botón "Quitar del carrito"
+        self.botón_quitar_carrito = ttk.Button(self.labelframe_venta_producto, 
+                                               text=BOTÓN_QUITAR_CARRITO_VENTA)
+                                               # command=self.quitarDelCarrito) # (Añadir comando después)
+        self.botón_quitar_carrito.grid(column=2, row=2, 
+                                     padx=PADX_GENERAL_VENTA, 
+                                     pady=PADY_GENERAL_VENTA, 
+                                     sticky=STICKY_WIDGET_OESTE_VENTA)
+        
     def buscarProducto(self):
         código = self.código.get().strip()
         nombre = self.nombre.get().strip()
