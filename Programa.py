@@ -120,11 +120,13 @@ ETIQUETA_CANTIDAD_VENTA = "Cantidad:"
 BOTÓN_VER_PRECIO_VENTA = "Ver precio"
 BOTÓN_AGREGAR_CARRITO_VENTA = "Agregar al carrito"
 BOTÓN_QUITAR_CARRITO_VENTA = "Quitar del carrito"
+ETIQUETA_PRECIO_VENTA = "Precio:"
 ANCHO_ENTRADA_CÓDIGO_VENTA = 20
 ANCHO_ENTRADA_CANTIDAD_VENTA = 10
 PADX_GENERAL_VENTA = 5
 PADY_GENERAL_VENTA = 5
 STICKY_WIDGET_OESTE_VENTA = "w"
+STICKY_WIDGET_CENTRO_PRECIO_VENTA = "wens"
 
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
@@ -744,6 +746,15 @@ class Aplicación(tk.Tk):
                                         pady=PADY_GENERAL_VENTA, 
                                         sticky=STICKY_WIDGET_OESTE_VENTA)
 
+        # Etiqueta "Precio"
+        self.etiqueta_precio_venta = ttk.Label(self.labelframe_venta_producto, 
+                                                 text=ETIQUETA_PRECIO_VENTA)
+        self.etiqueta_precio_venta.grid(column=0, row=2,
+                                        columnspan=2, 
+                                        padx=PADX_GENERAL_VENTA, 
+                                        pady=PADY_GENERAL_VENTA, 
+                                        sticky=STICKY_WIDGET_CENTRO_PRECIO_VENTA)
+        
         # Botón "Agregar al carrito"
         self.botón_agregar_carrito = ttk.Button(self.labelframe_venta_producto, 
                                                 text=BOTÓN_AGREGAR_CARRITO_VENTA)
