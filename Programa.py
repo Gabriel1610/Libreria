@@ -493,7 +493,7 @@ class Aplicación(tk.Tk):
                     
                     # 6. Actualiza la interfaz
                     self.limpiarCamposProductos()      # Limpia los campos de entrada
-                    self.actualizarTablaProductos()   # Refresca la tabla con el nuevo dato
+                    self.cargarDatosEnTablaEnHilo()  # Recarga los datos en la tabla (en un hilo)
 
                     # 7. Respalda la base de datos (como en tus otras funciones)
                     funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
@@ -682,11 +682,14 @@ class Aplicación(tk.Tk):
             
             # Actualiza la interfaz (limpia campos, recarga tabla) y respalda la BD.
             self.limpiarCamposProductos()
-            self.actualizarTablaProductos()
+            self.cargarDatosEnTablaEnHilo()
             funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
             
             messagebox.showinfo("Éxito", "Producto modificado correctamente.")
             # (FIN DE BLOQUE CORREGIDO)
+    
+    def eliminarProducto(self):
+        ...
     
     def limpiarCamposProductos(self):
         self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.

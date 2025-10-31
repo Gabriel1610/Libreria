@@ -269,6 +269,80 @@ class BaseDeDatos:
                 conexión.close()
                 logger.info("Conexión a la base de datos cerrada.")
 
+    def modificarUnProducto(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Modifica un producto existente en la tabla PRODUCTO.
+        Maneja reintentos en caso de deadlock.
+
+        Args:
+            datos (list): Una lista con los datos del producto en el orden:
+                          [nuevo_codigo, nombre, descripcion, precio_venta, 
+                           stock_actual, stock_minimo, id_producto (para el WHERE)]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)  # Obtener el logger
+        reintentar = True
+        
+        conexión = None
+        cursor = None
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()  # Abrir la conexión
+                cursor = conexión.cursor()
+                
+                # Consulta adaptada a la tabla PRODUCTO
+                # Los primeros 6 %s son para SET
+                # El último %s (id_producto) es para WHERE
+                consulta = """UPDATE PRODUCTO
+                              SET codigo = %s,
+                                  nombre = %s,
+                                  descripcion = %s,
+                                  precio_venta = %s,
+                                  stock_actual = %s,
+                                  stock_minimo = %s
+                              WHERE id_producto = %s;
+                           """
+                
+                cursor.execute(consulta, datos)
+                conexión.commit()  # Confirmar la transacción
+                reintentar = False
+                logger.info(f"Producto ID: {datos[6]} (Código: {datos[0]}) modificado exitosamente.")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(f"Deadlock detectado al modificar producto. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)  # espera antes de reintentar
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock al modificar producto.")
+                        raise
+                else:
+                    raise # Relanzar otros InternalError
+
+            except mysql.connector.Error as err:
+                # Registra un error específico de MySQL (ej: código duplicado)
+                logger.exception("Error de MySQL durante la modificación del producto:")
+                raise
+
+            except Exception as e:
+                # Registra cualquier otro error inesperado
+                logger.exception("Error inesperado durante la modificación del producto:")
+                raise
+
+            finally:
+                # Este bloque se ejecuta siempre
+                if cursor:
+                    cursor.close()
+                    logger.debug("Cursor cerrado.")
+                if conexión and conexión.is_connected():
+                    # Cierra la conexión
+                    conexión.close()
+                    logger.info("Conexión a la base de datos cerrada.")
+                    
     # Respaldar una base de datos MySQL usando Python
     def respaldarBaseDeDatos(self, ubicación_respaldo):
         config = self.obtener_configuración()
