@@ -34,6 +34,8 @@ ETIQUETA_PRECIO_TEXTO_PRODUCTOS = "Precio: $ "
 
 # Fuentes
 FUENTE_TÍTULO_PRODUCTOS = ('Times New Roman', 15, 'bold')
+FUENTE_PRECIO_PRODUCTO = ('Times New Roman', 15, 'normal')
+ESTILO_PRECIO_ENCONTRADO_VENTA = "precio_encontrado.TLabel"
 
 # Parámetros de layout (Grid)
 STICKY_LABELFRAME_PRODUCTOS = "nw"
@@ -120,9 +122,9 @@ ETIQUETA_CANTIDAD_VENTA = "Cantidad:"
 BOTÓN_VER_PRECIO_VENTA = "Ver precio"
 BOTÓN_AGREGAR_CARRITO_VENTA = "Agregar al carrito"
 BOTÓN_QUITAR_CARRITO_VENTA = "Quitar del carrito"
-ETIQUETA_PRECIO_VENTA = "Precio:"
+ETIQUETA_PRECIO_VENTA = ""
 ANCHO_ENTRADA_CÓDIGO_VENTA = 20
-ANCHO_ENTRADA_CANTIDAD_VENTA = 10
+ANCHO_ENTRADA_CANTIDAD_VENTA = 20
 PADX_GENERAL_VENTA = 5
 PADY_GENERAL_VENTA = 5
 STICKY_WIDGET_OESTE_VENTA = "w"
@@ -198,6 +200,11 @@ class Aplicación(tk.Tk):
             self.estilo_apariencia.configure("rojo.TLabel", foreground="red")  # Estilo para texto rojo.
             self.estilo_apariencia.configure("verde.TLabel", foreground="#37C11E")  # Estilo para texto verde.
             self.estilo_apariencia.configure("negro.TLabel", foreground="black")  # Estilo para texto negro.
+
+            # Estilo para "$1100.50" (encontrado)
+            self.estilo_apariencia.configure(ESTILO_PRECIO_ENCONTRADO_VENTA, 
+                                            foreground="#008000", 
+                                            font=FUENTE_PRECIO_PRODUCTO)
 
             # Crea la página de "Ventas" dentro del cuaderno de productos.
             self.página_cuaderno_ventas = ttk.Frame(self.cuaderno)
@@ -719,8 +726,8 @@ class Aplicación(tk.Tk):
 
         # Botón "Ver precio"
         self.botón_ver_precio = ttk.Button(self.labelframe_venta_producto, 
-                                           text=BOTÓN_VER_PRECIO_VENTA)
-                                           # command=self.verPrecioProducto) # (Añadir comando después)
+                                           text=BOTÓN_VER_PRECIO_VENTA,
+                                           command=self.verPrecioProducto) # (Añadir comando después)
         self.botón_ver_precio.grid(column=2, row=0, 
                                    padx=PADX_GENERAL_VENTA, 
                                    pady=PADY_GENERAL_VENTA, 
@@ -746,9 +753,19 @@ class Aplicación(tk.Tk):
                                         pady=PADY_GENERAL_VENTA, 
                                         sticky=STICKY_WIDGET_OESTE_VENTA)
 
-        # Etiqueta "Precio"
+        # Bindeo con la constante de evento
+        self.entrada_cantidad_venta.bind(EVENTO_TECLA_PRESIONADA, 
+                                lambda event: self.controlar_caracteres_cantidad(self.cantidad_venta, self.entrada_cantidad_venta, event))  # Validación de entrada
+
+        # Etiqueta "Precio" (ahora dinámica)
+        
+        self.precio_venta_var = tk.StringVar(value=ETIQUETA_PRECIO_VENTA)
+        
         self.etiqueta_precio_venta = ttk.Label(self.labelframe_venta_producto, 
-                                                 text=ETIQUETA_PRECIO_VENTA)
+                                                 textvariable=self.precio_venta_var, # Usar textvariable
+                                                 style=ESTILO_PRECIO_ENCONTRADO_VENTA,
+                                                 anchor='center')
+        
         self.etiqueta_precio_venta.grid(column=0, row=2,
                                         columnspan=2, 
                                         padx=PADX_GENERAL_VENTA, 
@@ -969,6 +986,37 @@ class Aplicación(tk.Tk):
                 # Este orden debe coincidir con las columnas definidas 
                 # en 'crearTablaConProductos' y la consulta a la BD.
                 self.tabla_productos.insert('', tk.END, values=producto)
+
+    # (Después de la línea 709, fin de crearLabelFrameVentaProducto)
+
+    def verPrecioProducto(self):
+        """
+        Busca el precio de un producto por su código y lo muestra en la
+        etiqueta de precio.
+        """
+        código = self.código_venta.get().strip()
+
+        # 1. Validar que el campo no esté vacío
+        if not código:
+            messagebox.showwarning("Campo vacío", "Por favor, ingrese un código de producto.")
+            self.entrada_código_venta.focus()
+            return
+
+        # 2. Consultar la base de datos
+        producto = self.base_de_datos.buscarProductoPorCódigo(código)
+
+        # 3. Procesar el resultado
+        if producto:
+            # ÉXITO: Producto encontrado
+            precio = producto[2]  # Índice 2 es 'precio_venta'
+            self.precio_venta_var.set(f"$ {precio:.2f}")
+            self.etiqueta_precio_venta.configure(style=ESTILO_PRECIO_ENCONTRADO_VENTA)
+        else:
+            # FALLO: Producto no encontrado
+            messagebox.showinfo("No encontrado", "No existe un producto con ese código.")
+            self.precio_venta_var.set(ETIQUETA_PRECIO_VENTA) # Restablece a "Precio:"
+            self.etiqueta_precio_venta.configure(style=ESTILO_PRECIO_ENCONTRADO_VENTA)
+            self.entrada_código_venta.focus()
 
     def cargarDatosEnTablaEnHilo(self):
         def cargar_datos():
