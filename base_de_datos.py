@@ -562,6 +562,312 @@ class BaseDeDatos:
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
 
+    def actualizarStockProducto(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Actualiza (resta) el stock de un producto en la tabla PRODUCTO
+        usando su 'codigo'.
+
+        La actualización es atómica: solo se ejecuta si el stock_actual
+        es mayor o igual a la cantidad vendida.
+
+        Args:
+            datos (list): Una lista con los datos en el orden:
+                          [cantidad_vendida, codigo_producto]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        
+        Raises:
+            ValueError: Si el stock es insuficiente o el código no existe.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)  # Obtener el logger
+        reintentar = True
+        
+        conexión = None
+        cursor = None
+        
+        # Preparamos los parámetros para la consulta SQL
+        # [cantidad_vendida, codigo_producto, cantidad_vendida_para_check]
+        parámetros_sql = (datos[0], datos[1], datos[0])
+        código_producto = datos[1]
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()  # Abrir la conexión
+                cursor = conexión.cursor()
+                
+                # --- CONSULTA ATÓMICA ---
+                # Solo actualiza si el stock_actual es >= a la cantidad vendida
+                consulta = """UPDATE PRODUCTO
+                              SET stock_actual = stock_actual - %s
+                              WHERE codigo = %s AND stock_actual >= %s;
+                           """
+                
+                cursor.execute(consulta, parámetros_sql)
+                
+                # --- VERIFICACIÓN DE STOCK ---
+                # Si rowcount es 0, la condición WHERE falló (no hay stock o no existe el código)
+                if cursor.rowcount == 0:
+                    reintentar = False # No es un deadlock, es un error lógico
+                    logger.warning(f"No se pudo actualizar stock para el código: {código_producto}. Stock insuficiente o código no encontrado.")
+                    # Lanza un error que la UI pueda capturar
+                    raise ValueError(f"Stock insuficiente para el producto (Código: {código_producto}) o el código no existe.")
+                
+                conexión.commit()  # Confirmar la transacción
+                reintentar = False
+                logger.info(f"Stock actualizado para el producto (Código: {código_producto}). Cantidad restada: {datos[0]}")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(f"Deadlock detectado al actualizar stock. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)  # espera antes de reintentar
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock al actualizar stock.")
+                        raise
+                else:
+                    raise # Relanzar otros InternalError
+
+            except mysql.connector.Error as err:
+                # Registra un error específico de MySQL
+                logger.exception("Error de MySQL durante la actualización del stock:")
+                raise
+
+            except Exception as e:
+                # Registra cualquier otro error inesperado
+                # (incluyendo el ValueError que lanzamos manualmente)
+                logger.exception("Error inesperado durante la actualización del stock:")
+                raise
+
+            finally:
+                # Este bloque se ejecuta siempre
+                if cursor:
+                    cursor.close()
+                    logger.debug("Cursor cerrado.")
+                if conexión and conexión.is_connected():
+                    # Cierra la conexión
+                    conexión.close()
+                    logger.info("Conexión a la base de datos cerrada.")
+
+    def ingresarDetalleVenta(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Inserta un registro (un producto) en la tabla DETALLE_VENTA.
+        Utiliza el 'código_producto' para buscar el 'id_producto' internamente.
+        Maneja reintentos en caso de deadlock.
+
+        Args:
+            datos (list): Una lista con los datos del detalle en el orden:
+                          [id_venta, código_producto, cantidad, precio_unitario]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)  # Obtener el logger para este módulo
+        reintentar = True
+        
+        # Declarar cursor y conexión fuera del try
+        conexión = None
+        cursor = None
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()  # Abrir la conexión
+                cursor = conexión.cursor()
+                
+                # --- CONSULTA MODIFICADA ---
+                # Ahora usa una subconsulta para encontrar el id_producto
+                # a partir del código_producto (datos[1])
+                consulta = """INSERT INTO DETALLE_VENTA(id_venta, id_producto, cantidad, precio_unitario)
+                              VALUES (%s, (SELECT id_producto FROM PRODUCTO WHERE codigo = %s), %s, %s);
+                           """
+                
+                cursor.execute(consulta, datos)
+                conexión.commit()  # Confirmar la transacción
+                reintentar = False
+                logger.info(f"Detalle de Venta (Venta ID: {datos[0]}, Producto Código: {datos[1]}) ingresado.")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(f"Deadlock detectado al ingresar detalle de venta. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)  # espera antes de reintentar
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock al ingresar detalle de venta.")
+                        raise
+                else:
+                    raise  # Relanzar otros InternalError
+
+            except mysql.connector.Error as err:
+                # Error 1062: PRIMARY KEY (id_venta, id_producto) duplicada
+                if err.errno == 1062: 
+                    mensaje_error = f"Error: El producto (Código: {datos[1]}) ya existe en esta venta (ID: {datos[0]})."
+                    logger.warning(mensaje_error)
+                    # Lanza un error simple que la UI pueda capturar
+                    raise ValueError(f"Este producto (Código: {datos[1]}) ya está en el carrito.")
+                
+                # Error 1452: Foreign Key constraint fails (id_venta o id_producto no existen)
+                elif err.errno == 1452:
+                    mensaje_error = f"Error de FK: No se encontró la Venta (ID: {datos[0]}) o el Producto (Código: {datos[1]})."
+                    logger.error(mensaje_error)
+                    raise ValueError(f"Error: El producto con código '{datos[1]}' o la venta no son válidos.")
+
+                else:
+                    # Registra cualquier otro error de MySQL
+                    logger.exception("Error de MySQL durante el ingreso del detalle de venta:")
+                    raise # Relanza la excepción original
+
+            except Exception as e:
+                # Registra cualquier otro error inesperado
+                logger.exception("Error inesperado durante el ingreso del detalle de venta:")
+                raise
+
+            finally:
+                # Este bloque se ejecuta siempre
+                if cursor:
+                    cursor.close()
+                    logger.debug("Cursor cerrado.")
+                if conexión and conexión.is_connected():
+                    conexión.close()
+                    logger.info("Conexión a la base de datos cerrada.")
+    
+
+    def registrarVenta(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Registra una nueva venta en la tabla VENTA.
+        Maneja reintentos en caso de deadlock.
+
+        Args:
+            datos (list): Una lista que contiene la fecha y hora: 
+                          [fecha_hora]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        
+        Returns:
+            int: El id_venta (AUTO_INCREMENT) de la venta recién registrada.
+            None: Si la inserción falla.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)  # Obtener el logger para este módulo
+        reintentar = True
+        
+        # Declarar cursor y conexión fuera del try
+        conexión = None
+        cursor = None
+        id_venta_generado = None  # Variable para almacenar el ID
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()  # Abrir la conexión
+                cursor = conexión.cursor()
+                
+                # Consulta adaptada a la tabla VENTA
+                consulta = """INSERT INTO VENTA(fecha_hora) VALUES (%s);"""
+                
+                cursor.execute(consulta, datos)
+                
+                # --- OBTENER EL ID GENERADO ---
+                id_venta_generado = cursor.lastrowid
+                
+                conexión.commit()  # Confirmar la transacción
+                reintentar = False
+                logger.info(f"Venta registrada exitosamente con ID: {id_venta_generado}.")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                id_venta_generado = None # Asegurarse de que no devuelva un ID en caso de error
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(f"Deadlock detectado al registrar la venta. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)  # espera antes de reintentar
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock al registrar la venta.")
+                        raise
+                else:
+                    raise  # Relanzar otros InternalError
+
+            except mysql.connector.Error as err:
+                id_venta_generado = None
+                # Registra un error específico de MySQL si ocurre
+                logger.exception("Error de MySQL durante el registro de la venta:")
+                raise
+
+            except Exception as e:
+                id_venta_generado = None
+                # Registra cualquier otro error inesperado
+                logger.exception("Error inesperado durante el registro de la venta:")
+                raise
+
+            finally:
+                # Este bloque se ejecuta siempre, haya habido error o no
+                if cursor:
+                    cursor.close()
+                    logger.debug("Cursor cerrado.")
+                if conexión and conexión.is_connected():
+                    conexión.close()
+                    logger.info("Conexión a la base de datos cerrada.")
+        
+        return id_venta_generado
+    
+    def consultarVentasConTotal(self):
+        """
+        Consulta todas las ventas de la tabla VENTA y calcula el total
+        para cada una sumando los subtotales (cantidad * precio_unitario)
+        de la tabla DETALLE_VENTA.
+
+        Devuelve:
+            list: Una lista de tuplas, donde cada tupla es una venta:
+                  (id_venta, fecha_hora, total_venta)
+                  Ordenadas de la más reciente a la más antigua.
+            None: Si ocurre un error.
+        """
+        logger = logging.getLogger(__name__)
+        conexión = None
+        cursor = None
+        
+        try:
+            # 1. Abre la conexión a la base de datos
+            conexión = self.abrir()
+            cursor = conexión.cursor()
+            
+            # 2. Consulta SQL con subconsulta correlacionada
+            consulta = """
+                SELECT
+                    V.id_venta,
+                    V.fecha_hora,
+                    (SELECT ROUND(COALESCE(SUM(DV.cantidad * DV.precio_unitario), 0), 2)
+                     FROM DETALLE_VENTA AS DV
+                     WHERE DV.id_venta = V.id_venta) AS total_venta
+                FROM
+                    VENTA AS V
+                ORDER BY
+                    V.fecha_hora DESC;
+            """
+            
+            # 3. Ejecución de la consulta
+            cursor.execute(consulta)
+            filas = cursor.fetchall()
+            logger.info(f"Se consultaron {len(filas)} ventas con su total.")
+            return filas
+        
+        except mysql.connector.Error as err:
+            logger.exception("Error de MySQL al consultar ventas con total:")
+            return None
+        except Exception as e:
+            # 4. Manejo de excepciones
+            logger.exception(f"Error inesperado al consultar ventas con total: {e}")
+            return None
+
+        finally:
+            # 5. Asegura que la conexión se cierre
+            if cursor:
+                cursor.close()
+                logger.debug("Cursor cerrado.")
+            if 'conexión' in locals() and conexión and conexión.is_connected():
+                conexión.close()
+                logger.info("Conexión a la base de datos cerrada.")
+    
     def eliminarProductoPorID(self, datos, intentos=MÁX_INTENTOS):
         """
         Elimina un producto existente de la tabla PRODUCTO usando su ID.

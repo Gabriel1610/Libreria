@@ -129,6 +129,9 @@ BOTÓN_QUITAR_CARRITO_VENTA = "Quitar del carrito"
 BOTÓN_LIMPIAR_VENTA = "Limpiar"
 ETIQUETA_PRECIO_VENTA = ""
 ANCHO_ENTRADA_CÓDIGO_VENTA = 20
+BOTÓN_FINALIZAR_VENTA = 'Finalizar venta'
+COLUMNA_BOTÓN_FINALIZAR_VENTA = 6
+FILA_BOTÓN_FINALIZAR_VENTA = 1
 ANCHO_ENTRADA_CANTIDAD_VENTA = 20
 PADX_GENERAL_VENTA = 5
 PADY_GENERAL_VENTA = 5
@@ -442,7 +445,43 @@ class Aplicación(tk.Tk):
         self.barra_desplazamiento_vertical_stock.grid(row=4, column=3, sticky='ns')
         self.barra_desplazamiento_horizontal_stock.grid(row=5, column=1, columnspan=2, sticky='we')
 
-    # (Justo después de la función crearTablaStockAlerta)
+    def quitarDelCarrito(self):
+        """
+        Verifica si hay una fila seleccionada en self.tabla_carrito. 
+        Si la hay, elimina la fila y actualiza el total de la venta. 
+        Si no la hay, muestra un mensaje de advertencia.
+        """
+        
+        # 1. Obtener los ítems seleccionados
+        ítems_seleccionados = self.tabla_carrito.selection()
+        
+        # 2. Verificar la selección
+        if not ítems_seleccionados:
+            messagebox.showwarning("Atención", "Debe seleccionar una fila del carrito para poder quitarla.")
+            return
+
+        # 3. Procesar el ítem seleccionado (solo tomamos el primero)
+        item_id = ítems_seleccionados[0]
+        
+        # 4. Obtener el subtotal de la fila a eliminar
+        datos_fila = self.tabla_carrito.item(item_id, 'values')
+        
+        # El subtotal es el último valor en la tupla de la tabla
+        subtotal_str = datos_fila[-1]
+
+        subtotal_a_restar = float(subtotal_str)
+        
+        # 5. Eliminar la fila de la tabla
+        self.tabla_carrito.delete(item_id)
+        
+        # 6. Actualizar el total de la venta
+
+        # Obtener el total actual de la etiqueta
+        total_actual_str = self.etiqueta_valor_total_produdcto.cget('text')
+        total_actual_float = float(total_actual_str)
+        nuevo_total_float = total_actual_float - subtotal_a_restar
+
+        self.etiqueta_valor_total_produdcto.config(text=f"{nuevo_total_float:.2f}")
 
     def crearTablaConVentas(self):
         """
@@ -823,13 +862,25 @@ class Aplicación(tk.Tk):
         
         # Botón "Quitar del carrito"
         self.botón_quitar_carrito = ttk.Button(self.labelframe_venta_producto, 
-                                               text=BOTÓN_QUITAR_CARRITO_VENTA)
-                                               # command=self.quitarDelCarrito) # (Añadir comando después)
+                                               text=BOTÓN_QUITAR_CARRITO_VENTA,
+                                               command=self.quitarDelCarrito)
         self.botón_quitar_carrito.grid(column=5, row=1, 
                                      padx=PADX_GENERAL_VENTA, 
                                      pady=PADY_GENERAL_VENTA, 
                                      sticky=STICKY_WIDGET_OESTE_VENTA)
+        
+        # Botón "Finalizar venta"
+        self.botón_quitar_carrito = ttk.Button(self.labelframe_venta_producto, 
+                                               text=BOTÓN_FINALIZAR_VENTA,
+                                               command=self.finalizarVenta)
+        self.botón_quitar_carrito.grid(column=COLUMNA_BOTÓN_FINALIZAR_VENTA, row=FILA_BOTÓN_FINALIZAR_VENTA, 
+                                     padx=PADX_GENERAL_VENTA, 
+                                     pady=PADY_GENERAL_VENTA, 
+                                     sticky=STICKY_WIDGET_OESTE_VENTA)
     
+    def finalizarVenta(self):
+        ...
+
     def agregarAlCarrito(self):
         """
         Agrega un producto al carrito de compras si el código y la cantidad son válidos.
@@ -938,6 +989,9 @@ class Aplicación(tk.Tk):
         
         # 3. Pone el foco (cursor) de nuevo en la entrada de código
         self.entrada_código_venta.focus()
+
+        # 4. Deseleccionar la fila de la tabla ventas
+        self.tabla_carrito.selection_set(())
 
     def buscarProducto(self):
         código = self.código.get().strip()
@@ -1241,6 +1295,36 @@ class Aplicación(tk.Tk):
         self.hilos.append(hilo)
         # Inicia la ejecución del hilo.
         hilo.start()
+
+    def cargarDatosEnTablaVentasEnHilo(self):
+        def cargar_datos_ventas():
+            try:
+                # Programa la actualización de la tabla en el hilo principal.
+                # Usa 'ventana.after(0, ...)' para ejecutar 'actualizarTablaProductos'
+                # tan pronto como sea posible en el hilo principal.
+                self.after(0, self.actualizarTablaVentas)  # Actualizar la interfaz en el hilo principal
+            except Exception as e:
+                # Maneja cualquier error que ocurra durante la carga de datos.
+                print(f"Error al cargar datos: {e}")  # Imprime un mensaje de error.
+
+        # Crea un hilo secundario para la función 'cargar_datos'.
+        # 'daemon=True' asegura que el hilo se cierre cuando la aplicación principal se cierre.
+        hilo = threading.Thread(target=cargar_datos_ventas, daemon=True)
+        # Agrega el hilo a la lista de hilos para mantener una referencia.
+        self.hilos.append(hilo)
+        # Inicia la ejecución del hilo.
+        hilo.start()
+    
+    def actualizarTablaVentas(self):
+        """
+        Hacer una función actualizarTablaVentas() que si la tabla tabla_carrito se encuentra vacía lanza un mensaje de adevertencia.
+        En caso contrario, toma todas las filas de la tabla, las guarda, vacía la tabla, y en base al valor total de la etiqueta 
+        self.etiqueta_valor_total_produdcto inserta un nuevo valor en la base de datos con la función registrarVenta() y obtiene el
+        id_venta. Luego con el dato del id_venta y los demás actualiza la base de datos fila por fila lo que se vendió de cada producto con la función
+        actualizarStockProducto(). Seguidamente usa la función base_de_datos.consultarVentasConTotal() para obtener todos los registros de la tabla ventas, ahí recién vacía la tabla y la
+         llena con los nuevos datos.
+        """
+        ...
     
     def cargarRegistros(self, event=None):
         """
@@ -1280,12 +1364,6 @@ class Aplicación(tk.Tk):
                 self.stock.set(datos[3])
                 self.stock_mínimo.set(datos[4])
                 self.texto_desplazado.insert('1.0', datos[5])
-
-                # 5. Deshabilita los botones correspondientes
-                self.botón_editar_productos.config(state='enabled')
-                self.botón_eliminar_productos.config(state='enabled')
-                self.botón_limpiar_productos.config(state="enabled")
-                self.botón_añadir_productos.config(state='enabled')
 
                 # 6. Calcula y muestra los caracteres restantes para la descripción.
                 descripción_actual = datos[5]
@@ -1340,6 +1418,8 @@ class Aplicación(tk.Tk):
                 # Captura cualquier otro error
                 messagebox.showerror("Error de Base de Datos", 
                                      f"No se pudo modificar el producto: {str(e)}")
+        elif not item_seleccionado:
+            messagebox.showwarning("Error", "Debe seleccionar un producto")
     
     def eliminarProducto(self):
         """
@@ -1394,6 +1474,8 @@ class Aplicación(tk.Tk):
                 except Exception as e:
                     messagebox.showerror("Error al Eliminar", 
                                          f"No se pudo eliminar el producto: {str(e)}")
+        else:
+            messagebox.showwarning("Error", "Debe seleccionar un producto")
     
     def limpiarCamposProductos(self):
         self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.
@@ -1402,10 +1484,6 @@ class Aplicación(tk.Tk):
         self.entrada_stock_mínimo.delete(0, "end")
         self.entrada_código.delete(0, "end")
         self.entrada_nombre.delete(0, "end")
-        self.botón_editar_productos.config(state='disabled')  # Deshabilita el botón "Editar".
-        self.botón_eliminar_productos.config(state='disabled')  # Deshabilita el botón "Eliminar".
-        self.botón_limpiar_productos.config(state="disabled")  # Deshabilita el botón "Limpiar".
-        self.botón_añadir_productos.config(state='disabled')  # Deshabilita el botón "Añadir".
         self.tabla_productos.selection_set(()) # Deselecciona la tabla
         self.etiqueta_contador_caracteres.config(text=str(MÁX_CAR_DESCRIP)) # actualiza la cantidad de caracteres restantes
         # cambia a verde el color de la etiqueta de los caracteres restantes
@@ -1512,7 +1590,7 @@ class Aplicación(tk.Tk):
             retornar = None
         return retornar
     
-    def controlar_caracteres_solo_enteros(self, event, entry_widget):
+    def controlar_caracteres_solo_enteros(self, event, entry_widget, string_var):
         """
         Valida que solo se ingresen números enteros en un campo de entrada.
         
