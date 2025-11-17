@@ -356,6 +356,70 @@ class BaseDeDatos:
             if conexión and conexión.is_connected():
                 conexión.close()
                 logger.info("Conexión a la base de datos cerrada.")
+    
+    def consultarDetalleVenta(self, id_venta):
+        """
+        Consulta todos los detalles (productos, cantidades, precios)
+        asociados con un id_venta específico.
+
+        Utiliza un JOIN para obtener el código y nombre del producto.
+        Calcula el subtotal (cantidad * precio_unitario) para cada fila.
+
+        Args:
+            id_venta (int): El ID de la venta a consultar.
+
+        Devuelve:
+            list: Una lista de tuplas, donde cada tupla es un detalle de la venta:
+                  (codigo_producto, nombre_producto, precio_unitario, cantidad, subtotal)
+            None: Si ocurre un error.
+        """
+        logger = logging.getLogger(__name__)
+        conexión = None
+        cursor = None
+        
+        try:
+            # 1. Abre la conexión a la base de datos
+            conexión = self.abrir()
+            cursor = conexión.cursor()
+            
+            # 2. Consulta SQL con JOIN para obtener detalles legibles
+            consulta = """
+                SELECT
+                    P.codigo,
+                    P.nombre,
+                    DV.precio_unitario,
+                    DV.cantidad,
+                    ROUND((DV.cantidad * DV.precio_unitario), 2) AS subtotal
+                FROM
+                    DETALLE_VENTA AS DV
+                JOIN
+                    PRODUCTO AS P ON DV.id_producto = P.id_producto
+                WHERE
+                    DV.id_venta = %s;
+            """
+            
+            # 3. Ejecución de la consulta (pasamos el id_venta como tupla)
+            cursor.execute(consulta, (id_venta,))
+            filas = cursor.fetchall()
+            logger.info(f"Se consultaron {len(filas)} detalles para la Venta ID: {id_venta}.")
+            return filas
+        
+        except mysql.connector.Error as err:
+            logger.exception(f"Error de MySQL al consultar detalles de Venta ID: {id_venta}:")
+            return None
+        except Exception as e:
+            # 4. Manejo de excepciones
+            logger.exception(f"Error inesperado al consultar detalles de Venta ID: {id_venta}: {e}")
+            return None
+
+        finally:
+            # 5. Asegura que la conexión se cierre
+            if cursor:
+                cursor.close()
+                logger.debug("Cursor cerrado.")
+            if 'conexión' in locals() and conexión and conexión.is_connected():
+                conexión.close()
+                logger.info("Conexión a la base de datos cerrada.")
 
     def consultarProductosPorPorcentajeStock(self):
         """

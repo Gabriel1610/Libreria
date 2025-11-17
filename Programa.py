@@ -10,7 +10,7 @@ from VentanaCierre import VentanaCierre
 import threading
 import functools
 import sys
-from math import floor
+from datetime import datetime
 import funciones_útiles
 import validación_tipo_de_datos
 
@@ -127,6 +127,7 @@ BOTÓN_VER_PRECIO_VENTA = "Ver precio"
 BOTÓN_AGREGAR_CARRITO_VENTA = "Agregar al carrito"
 BOTÓN_QUITAR_CARRITO_VENTA = "Quitar del carrito"
 BOTÓN_LIMPIAR_VENTA = "Limpiar"
+BOTÓN_VACIAR_CARRITO_VENTA = "Vaciar carrito"
 ETIQUETA_PRECIO_VENTA = ""
 ANCHO_ENTRADA_CÓDIGO_VENTA = 20
 BOTÓN_FINALIZAR_VENTA = 'Finalizar venta'
@@ -244,6 +245,7 @@ class Aplicación(tk.Tk):
             self.crearTablaConVentas()
             self.crearLabelFrameVentaProducto()
             self.crearTablaCarrito()
+            self.actualizarTablaVentasEnHilo()
 
             self.etiqueta_total_produdcto = ttk.Label(self.página_cuaderno_ventas, 
                                                       text=ETIQUETA_TOTAL_PRODUCTOS,
@@ -522,8 +524,8 @@ class Aplicación(tk.Tk):
         )
 
         # --- 5. Definir Anchos de Columna (No expandibles) ---
-        self.tabla_ventas.column("id", anchor='center', width=110, stretch=tk.NO)
-        self.tabla_ventas.column("fecha_hora", anchor='w', width=100, stretch=tk.NO)
+        self.tabla_ventas.column("id", anchor='center', width=85, stretch=tk.NO)
+        self.tabla_ventas.column("fecha_hora", anchor='center', width=125, stretch=tk.NO)
         self.tabla_ventas.column("total", anchor='e', width=120, stretch=tk.NO)
         
         # --- 6. Scrollbars para la tabla de ventas ---
@@ -544,6 +546,7 @@ class Aplicación(tk.Tk):
         # --- 7. Posicionar scrollbars ---
         self.barra_desplazamiento_vertical_ventas.grid(row=1, column=1, rowspan=3, sticky='wns')
         self.barra_desplazamiento_horizontal_ventas.grid(row=4, column=0, sticky='we')
+        self.tabla_ventas.bind("<<TreeviewSelect>>", self.cargarDetalleVentaEnCarrito)
 
     def crearLabelFrameProductos(self):
         # --- Creación de Widgets ---
@@ -860,6 +863,15 @@ class Aplicación(tk.Tk):
 
         # --- Fila 2 (Interior) ---
         
+        # Botón "Vaciar carrito"
+        self.botón_vaciar_carrito = ttk.Button(self.labelframe_venta_producto, 
+                                               text=BOTÓN_VACIAR_CARRITO_VENTA,
+                                               command=self.vaciarCarrito) # Asignamos la nueva función
+        self.botón_vaciar_carrito.grid(column=4, row=1, # Col 4, Fila 1
+                                      padx=PADX_GENERAL_VENTA, 
+                                      pady=PADY_GENERAL_VENTA, 
+                                      sticky=STICKY_WIDGET_OESTE_VENTA)
+        
         # Botón "Quitar del carrito"
         self.botón_quitar_carrito = ttk.Button(self.labelframe_venta_producto, 
                                                text=BOTÓN_QUITAR_CARRITO_VENTA,
@@ -870,80 +882,301 @@ class Aplicación(tk.Tk):
                                      sticky=STICKY_WIDGET_OESTE_VENTA)
         
         # Botón "Finalizar venta"
-        self.botón_quitar_carrito = ttk.Button(self.labelframe_venta_producto, 
+        self.botón_finalizar_venta = ttk.Button(self.labelframe_venta_producto, 
                                                text=BOTÓN_FINALIZAR_VENTA,
-                                               command=self.finalizarVenta)
-        self.botón_quitar_carrito.grid(column=COLUMNA_BOTÓN_FINALIZAR_VENTA, row=FILA_BOTÓN_FINALIZAR_VENTA, 
+                                               command=self.finalizarVentaEnHilo)
+        self.botón_finalizar_venta.grid(column=COLUMNA_BOTÓN_FINALIZAR_VENTA, row=FILA_BOTÓN_FINALIZAR_VENTA, 
                                      padx=PADX_GENERAL_VENTA, 
                                      pady=PADY_GENERAL_VENTA, 
                                      sticky=STICKY_WIDGET_OESTE_VENTA)
     
-    def finalizarVenta(self):
-        ...
-
-    def agregarAlCarrito(self):
+    def vaciarCarrito(self):
         """
-        Agrega un producto al carrito de compras si el código y la cantidad son válidos.
-
-        Valida la entrada, consulta el precio del producto en la base de datos,
-        calcula el subtotal, agrega una nueva fila a la tabla tabla_carrito,
-        y actualiza el valor total de la venta.
+        Verifica si el carrito tiene items. Si los tiene,
+        pregunta al usuario si desea vaciar el carrito y, si confirma,
+        borra todas las filas de la tabla_carrito y resetea el total.
         """
         
-        # 1. Validación de campos
+        # 1. Verificar si el carrito está vacío
+        if not self.tabla_carrito.get_children():
+            # No hay nada que vaciar, no hacer nada.
+            return
+        
+        # 2. Preguntar al usuario (solo si no está vacío)
+        respuesta = messagebox.askyesno("Vaciar Carrito", 
+                                        "¿Está seguro de que desea vaciar el carrito?\n"
+                                        "Se eliminarán todos los ítems.")
+        
+        if respuesta: # Si el usuario dijo "Sí"
+            # 3. Vaciar la tabla
+            funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
+            
+            # 4. Resetear el total a 0.00
+            self.etiqueta_valor_total_produdcto.config(text="0.00")
+
+    def cargarDetalleVentaEnCarrito(self, event=None):
+        """
+        Se activa al seleccionar una fila de la tabla_ventas.
+        
+        Advierte al usuario, y si acepta, vacía el carrito actual
+        y lo llena con los detalles de la venta histórica seleccionada.
+        """
+        
+        # 1. Obtener la fila seleccionada de la tabla VENTAS
+        items_seleccionados = self.tabla_ventas.selection()
+        if not items_seleccionados:
+            return  # No hacer nada si el clic no seleccionó nada (ej. clic en encabezado)
+            
+        item_id = items_seleccionados[0]
+        datos_venta = self.tabla_ventas.item(item_id, 'values')
+        
+        # El id_venta es el primer valor (índice 0)
+        id_venta_seleccionada = datos_venta[0]
+
+        # 2. Advertir al usuario si el carrito actual NO está vacío
+        if self.tabla_carrito.get_children(): # Si hay items en el carrito
+            respuesta = messagebox.askyesno("Sobrescribir Carrito",
+                                            "¿Desea vaciar el carrito actual y cargar los detalles de la venta seleccionada?")
+            if not respuesta:
+                self.tabla_ventas.selection_set(()) # Deseleccionar la fila
+                return # El usuario presionó "No"
+
+        # 3. Vaciar el carrito actual
+        funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
+        
+        try:
+            # 4. Consultar los detalles de esa venta
+            # (Devuelve: codigo, nombre, precio_unitario, cantidad, subtotal)
+            detalles = self.base_de_datos.consultarDetalleVenta(id_venta_seleccionada)
+
+            if detalles is None:
+                messagebox.showerror("Error de BD", "No se pudieron consultar los detalles de la venta.")
+                self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
+                return
+
+            total_recuperado = 0.0
+
+            # 5. Cargar los detalles en la tabla del carrito
+            for item in detalles:
+                self.tabla_carrito.insert('', tk.END, values=item)
+                # Acumular el total (el subtotal está en el índice 4)
+                total_recuperado += float(item[4])
+
+            # 6. Actualizar la etiqueta del total
+            self.etiqueta_valor_total_produdcto.config(text=f"{total_recuperado:.2f}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error al cargar los detalles: {str(e)}")
+            self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
+
+    def finalizarVenta(self):
+        """
+        Finaliza la venta actual:
+        1. Verifica que el carrito no esté vacío.
+        2. Registra la VENTA.
+        3. Registra el DETALLE_VENTA para cada ítem.
+        4. Actualiza el STOCK de cada producto.
+        5. Refresca la tabla de ventas.
+        6. Refresca la tabla de productos (stock).
+        """
+        
+        # 1. Obtener todos los items del carrito
+        items_carrito_ids = self.tabla_carrito.get_children()
+
+        # Condición 1: Carrito vacío
+        if not items_carrito_ids:
+            messagebox.showwarning("Carrito vacío", "No hay productos en el carrito para finalizar la venta.")
+            return
+
+        # Confirmar la venta con el total
+        total_venta_str = self.etiqueta_valor_total_produdcto.cget('text')
+        respuesta = messagebox.askyesno("Confirmar Venta", 
+                                        f"¿Desea finalizar la venta por un total de $ {total_venta_str}?")
+        if not respuesta:
+            return
+
+        try:
+            # 2. Guardar los datos de las filas ANTES de borrarlas
+            items_a_procesar = []
+            for item_id in items_carrito_ids:
+                # (código, nombre, precio_unitario, cantidad, subtotal)
+                items_a_procesar.append(self.tabla_carrito.item(item_id, 'values'))
+
+            # 3. Registrar la VENTA principal y obtener el id_venta
+            fecha_actual = datetime.now()
+            id_venta_generado = self.base_de_datos.registrarVenta([fecha_actual])
+
+            if id_venta_generado is None:
+                messagebox.showerror("Error", "No se pudo registrar la venta principal.")
+                return
+
+            # 4. Registrar los DETALLES y actualizar STOCK (Loop)
+            for item in items_a_procesar:
+                código = item[0]
+                precio_unitario = float(item[2])
+                cantidad = int(item[3])
+
+                # 4a. Ingresar el detalle de la venta
+                #     Espera: [id_venta, código_producto, cantidad, precio_unitario]
+                datos_detalle = [id_venta_generado, código, cantidad, precio_unitario]
+                self.base_de_datos.ingresarDetalleVenta(datos_detalle)
+
+                # 4b. Actualizar (restar) el stock del producto
+                #     Espera: [cantidad_vendida, codigo_producto]
+                datos_stock = [cantidad, código]
+                self.base_de_datos.actualizarStockProducto(datos_stock)
+            
+            # 5. Limpiar la UI de Venta
+            funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
+            self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
+            self.limpiarCamposVenta()
+
+            # 6. Refrescar la tabla de VENTAS (ahora que hay una nueva)
+            self.actualizarTablaVentasEnHilo()
+
+            # 7. Refrescar la tabla de PRODUCTOS (porque el stock cambió)
+            self.datos = self.base_de_datos.consultarDatosProductos() # Recargar datos principales
+            self.cargarDatosEnTablaEnHilo() # Esto actualiza tabla_productos y tabla_alertas
+
+            # 8. Respaldar la base de datos
+            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+
+            messagebox.showinfo("Éxito", f"Venta ID: {id_venta_generado} registrada correctamente.")
+
+        except ValueError as ve:
+            # Captura errores de "Stock insuficiente" o "Código duplicado en carrito"
+            messagebox.showerror("Error en Venta", str(ve))
+        except Exception as e:
+            # Captura cualquier otro error de BD
+            messagebox.showerror("Error Crítico", f"Ocurrió un error al procesar la venta: {str(e)}")
+
+    def actualizarTablaVentas(self):
+        """
+        Consulta la base de datos para obtener todas las ventas con su total
+        y actualiza la 'tabla_ventas' en la interfaz.
+        """
+        
+        try:
+            
+            # 1. Consultar los datos frescos
+            lista_ventas = self.base_de_datos.consultarVentasConTotal()
+
+            # 2. Borrar todos los items existentes
+            funciones_útiles.borrarTodasLasFilas(self.tabla_ventas)
+            
+            # 3. Cargar datos en la tabla
+            if lista_ventas:
+                for venta in lista_ventas:
+                    # Formatear la fecha/hora
+                    id_v = venta[0]
+                    fecha_hora_dt = venta[1] # Es un objeto datetime
+                    fecha_hora_str = fecha_hora_dt.strftime(funciones_útiles.FORMATO_PREFERIDO_HORA_Y_FECHA)
+                    total = f"{venta[2]:.2f}"
+                    
+                    self.tabla_ventas.insert('', tk.END, values=(id_v, fecha_hora_str, total))
+                    
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudieron cargar las ventas: {str(e)}")
+            
+    def agregarAlCarrito(self):
+        """
+        Agrega o actualiza un producto en el carrito, verificando el stock.
+
+        1. Valida campos de entrada.
+        2. Consulta el producto y su stock.
+        3. Verifica si el producto ya está en el carrito.
+        4. Calcula el stock total necesario (nuevo + en carrito).
+        5. Compara con el stock disponible y advierte si es insuficiente.
+        6. Si hay stock, INSERTA una nueva fila o ACTUALIZA la existente.
+        7. Actualiza el total del carrito.
+        """
+        
+        # 1. Validación de campos (Código y Cantidad no vacíos)
         if not self.esUnProductoValidoParaElCarrito():
             return
         
-        # 2. Obtener inputs y consultar producto
         código = self.código_venta.get().strip()
-        cantidad_str = self.cantidad_venta.get().strip()
+        cantidad_deseada_str = self.cantidad_venta.get().strip()
+        cantidad_deseada = int(cantidad_deseada_str) # Convertir ahora
 
+        # 2. Consultar producto (Necesitamos el stock disponible primero)
         try:
             producto_encontrado = self.base_de_datos.buscarProductoPorCódigo(código)
         except Exception as e:
             messagebox.showerror("Error de BD", f"Error al buscar el producto por código: {str(e)}")
             return
 
-        # 3. Procesar el resultado de la consulta
-        if producto_encontrado:
-            # El orden devuelto por buscarProductoPorCódigo es (código, nombre, precio_venta, ...)
-            nombre = producto_encontrado[1]
-            precio_unitario = float(producto_encontrado[2])
-            cantidad = int(cantidad_str)
-            
-            # 4. Calcular Subtotal
-            subtotal_float = precio_unitario * cantidad
-
-            # 5. Insertar en la tabla del carrito
-            # Los valores insertados en la tabla deben reflejar el formato deseado
-            self.tabla_carrito.insert('', tk.END, values=(
-                código, 
-                nombre, 
-                str(precio_unitario), 
-                cantidad, 
-                f"{subtotal_float:.2f}"
-            ))
-
-            # 6. Actualizar el Valor total de la venta
-
-            # a. Obtener el valor actual del total
-            total_actual_str = self.etiqueta_valor_total_produdcto.cget('text')
-            
-            # b. Sumar el nuevo subtotal
-            nuevo_total_float = float(total_actual_str) + subtotal_float
-
-            # d. Formatear y actualizar la etiqueta
-            nuevo_total_formateado = f"{nuevo_total_float:.2f}"
-
-            self.etiqueta_valor_total_produdcto.config(text=nuevo_total_formateado)
-            
-            # 7. Limpiar campos de entrada de venta para el próximo producto
-            self.limpiarCamposVenta() 
-
-        else:
-            # 8. Producto no encontrado
+        # 3. Producto no encontrado
+        if not producto_encontrado:
             messagebox.showinfo("No encontrado", "No existe un producto con ese código.")
             self.entrada_código_venta.focus()
+            return
+
+        # 4. PROCESAR Y VERIFICAR STOCK
+        # (Índices: 1:nombre, 2:precio_venta, 3:stock_actual)
+        nombre = producto_encontrado[1]
+        precio_unitario = float(producto_encontrado[2])
+        stock_disponible = int(producto_encontrado[3])
+
+        # 5. VERIFICAR SI EL PRODUCTO YA ESTÁ EN EL CARRITO
+        cantidad_en_carrito = 0
+        item_id_en_carrito = None # Para saber si debemos UPTATE o INSERT
+
+        for item_id in self.tabla_carrito.get_children():
+            fila = self.tabla_carrito.item(item_id, 'values')
+            if fila[0] == código: # Si el código (fila[0]) coincide
+                cantidad_en_carrito = int(fila[3]) # Obtener la cantidad (fila[3])
+                item_id_en_carrito = item_id # Guardar el ID de la fila
+                break # Encontramos el producto, salir del loop
+        
+        # 6. Calcular stock total necesario
+        stock_necesario = cantidad_deseada + cantidad_en_carrito
+
+        # 7. ¡La Validación de Stock!
+        if stock_necesario > stock_disponible:
+            messagebox.showwarning("Stock Insuficiente", 
+                                 f"No hay stock suficiente para '{nombre}'.\n\n"
+                                 f"Stock disponible: {stock_disponible}\n"
+                                 f"Cantidad ya en carrito: {cantidad_en_carrito}\n"
+                                 f"Cantidad deseada: {cantidad_deseada}\n\n"
+                                 f"Total necesario: {stock_necesario}")
+            self.entrada_cantidad_venta.focus()
+            return # Detener la función
+
+        # 8. Si hay stock, INSERTAR o ACTUALIZAR
+        
+        # Subtotal de los *nuevos* items a añadir
+        subtotal_float_nuevo = precio_unitario * cantidad_deseada 
+        
+        # Calcular la *nueva cantidad total* y el *nuevo subtotal* para la FILA
+        nueva_cantidad_total_item = cantidad_deseada + cantidad_en_carrito
+        nuevo_subtotal_item_fila = precio_unitario * nueva_cantidad_total_item
+        
+        # Preparar los valores de la fila
+        valores_fila = (
+            código, 
+            nombre, 
+            str(precio_unitario), 
+            nueva_cantidad_total_item, 
+            f"{nuevo_subtotal_item_fila:.2f}" # Usar el *total* subtotal para la fila
+        )
+
+        if item_id_en_carrito:
+            # ACTUALIZAR la fila existente
+            self.tabla_carrito.item(item_id_en_carrito, values=valores_fila)
+        else:
+            # INSERTAR una nueva fila
+            self.tabla_carrito.insert('', tk.END, values=valores_fila)
+
+        # 9. Actualizar el Valor total de la venta
+        # Sumamos solo el subtotal de la cantidad *nueva* que se agregó
+        total_actual_str = self.etiqueta_valor_total_produdcto.cget('text')
+        nuevo_total_float = float(total_actual_str) + subtotal_float_nuevo
+        nuevo_total_formateado = f"{nuevo_total_float:.2f}"
+        self.etiqueta_valor_total_produdcto.config(text=nuevo_total_formateado)
+        
+        # 10. Limpiar campos de entrada de venta para el próximo producto
+        self.limpiarCamposVenta()
 
     def esUnProductoValidoParaElCarrito(self):
         """
@@ -1295,14 +1528,33 @@ class Aplicación(tk.Tk):
         self.hilos.append(hilo)
         # Inicia la ejecución del hilo.
         hilo.start()
+    
+    def actualizarTablaVentasEnHilo(self):
+        def cargar_datos():
+            try:
+                # Programa la actualización de la tabla en el hilo principal.
+                # Usa 'ventana.after(0, ...)' para ejecutar 'actualizarTablaProductos'
+                # tan pronto como sea posible en el hilo principal.
+                self.after(0, self.actualizarTablaVentas)  # ActualiactualizarTablaVentaszar la interfaz en el hilo principal
+            except Exception as e:
+                # Maneja cualquier error que ocurra durante la carga de datos.
+                print(f"Error al cargar datos: {e}")  # Imprime un mensaje de error.
 
-    def cargarDatosEnTablaVentasEnHilo(self):
+        # Crea un hilo secundario para la función 'cargar_datos'.
+        # 'daemon=True' asegura que el hilo se cierre cuando la aplicación principal se cierre.
+        hilo = threading.Thread(target=cargar_datos, daemon=True)
+        # Agrega el hilo a la lista de hilos para mantener una referencia.
+        self.hilos.append(hilo)
+        # Inicia la ejecución del hilo.
+        hilo.start()
+
+    def finalizarVentaEnHilo(self):
         def cargar_datos_ventas():
             try:
                 # Programa la actualización de la tabla en el hilo principal.
                 # Usa 'ventana.after(0, ...)' para ejecutar 'actualizarTablaProductos'
                 # tan pronto como sea posible en el hilo principal.
-                self.after(0, self.actualizarTablaVentas)  # Actualizar la interfaz en el hilo principal
+                self.after(0, self.finalizarVenta)  # Actualizar la interfaz en el hilo principal
             except Exception as e:
                 # Maneja cualquier error que ocurra durante la carga de datos.
                 print(f"Error al cargar datos: {e}")  # Imprime un mensaje de error.
@@ -1314,17 +1566,6 @@ class Aplicación(tk.Tk):
         self.hilos.append(hilo)
         # Inicia la ejecución del hilo.
         hilo.start()
-    
-    def actualizarTablaVentas(self):
-        """
-        Hacer una función actualizarTablaVentas() que si la tabla tabla_carrito se encuentra vacía lanza un mensaje de adevertencia.
-        En caso contrario, toma todas las filas de la tabla, las guarda, vacía la tabla, y en base al valor total de la etiqueta 
-        self.etiqueta_valor_total_produdcto inserta un nuevo valor en la base de datos con la función registrarVenta() y obtiene el
-        id_venta. Luego con el dato del id_venta y los demás actualiza la base de datos fila por fila lo que se vendió de cada producto con la función
-        actualizarStockProducto(). Seguidamente usa la función base_de_datos.consultarVentasConTotal() para obtener todos los registros de la tabla ventas, ahí recién vacía la tabla y la
-         llena con los nuevos datos.
-        """
-        ...
     
     def cargarRegistros(self, event=None):
         """
