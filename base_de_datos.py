@@ -449,10 +449,10 @@ class BaseDeDatos:
             # Esos productos (con min_stock=0) se tratan como "infinitamente"
             # seguros y se envían al final de la lista (ASC).
             consulta = """SELECT 
-                             codigo, 
-                             nombre,
+                             codigo,
                              stock_actual, 
-                             stock_minimo
+                             stock_minimo, 
+                             nombre
                           FROM 
                              PRODUCTO
                           ORDER BY
@@ -796,7 +796,139 @@ class BaseDeDatos:
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
     
+    # (Después de la función eliminarProductoPorID)
 
+    def eliminarVentaPorID(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Elimina una VENTA existente de la tabla VENTA usando su ID.
+        Gracias a 'ON DELETE CASCADE', los detalles en DETALLE_VENTA
+        se eliminan automáticamente.
+
+        Args:
+            datos (list): Una lista que contiene el id_venta: 
+                          [id_venta (para el WHERE)]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)  # Obtener el logger
+        reintentar = True
+        
+        conexión = None
+        cursor = None
+        
+        id_venta_a_eliminar = datos[0] 
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()
+                cursor = conexión.cursor()
+                
+                consulta = """DELETE FROM VENTA WHERE id_venta = %s;"""
+                
+                cursor.execute(consulta, datos)
+                conexión.commit()
+                reintentar = False
+                logger.info(f"Venta ID: {id_venta_a_eliminar} eliminada exitosamente (con CASCADE).")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(f"Deadlock detectado al eliminar Venta ID: {id_venta_a_eliminar}. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock al eliminar Venta.")
+                        raise
+                else:
+                    raise
+
+            except mysql.connector.Error as err:
+                logger.exception(f"Error de MySQL durante la eliminación de Venta ID: {id_venta_a_eliminar}:")
+                raise
+
+            except Exception as e:
+                logger.exception(f"Error inesperado durante la eliminación de Venta ID: {id_venta_a_eliminar}:")
+                raise
+
+            finally:
+                if cursor:
+                    cursor.close()
+                if conexión and conexión.is_connected():
+                    conexión.close()
+    
+    # (Línea 609, después de actualizarStockProducto)
+
+    def reponerStockProducto(self, datos, intentos=MÁX_INTENTOS):
+        """
+        Actualiza (suma/repone) el stock de un producto en la tabla PRODUCTO
+        usando su 'codigo'. (Usado para cancelar/eliminar ventas).
+
+        Args:
+            datos (list): Una lista con los datos en el orden:
+                          [cantidad_repuesta, codigo_producto]
+            intentos (int): Número máximo de reintentos en caso de deadlock.
+        """
+        intento = 0
+        logger = logging.getLogger(__name__)
+        reintentar = True
+        
+        conexión = None
+        cursor = None
+        
+        # [cantidad_repuesta, codigo_producto]
+        parámetros_sql = (datos[0], datos[1])
+        código_producto = datos[1]
+
+        while intento < intentos and reintentar:
+            try:
+                conexión = self.abrir()
+                cursor = conexión.cursor()
+                
+                # Consulta para SUMAR stock
+                consulta = """UPDATE PRODUCTO
+                              SET stock_actual = stock_actual + %s
+                              WHERE codigo = %s;
+                           """
+                
+                cursor.execute(consulta, parámetros_sql)
+                
+                if cursor.rowcount == 0:
+                    reintentar = False
+                    logger.warning(f"No se pudo reponer stock. Código no encontrado: {código_producto}.")
+                    # No lanzamos un error grave, solo advertimos, ya que la venta se eliminará igualmente.
+                
+                conexión.commit()
+                reintentar = False
+                logger.info(f"Stock repuesto para (Código: {código_producto}). Cantidad sumada: {datos[0]}")
+
+            except mysql.connector.errors.InternalError as err:
+                intento += 1
+                if err.errno == 1213: # Deadlock
+                    logger.warning(f"Deadlock detectado al reponer stock. Intento {intento}/{intentos}.")
+                    if intento < intentos:
+                        time.sleep(1)
+                        continue
+                    else:
+                        logger.error("No se pudo resolver el deadlock al reponer stock.")
+                        raise
+                else:
+                    raise
+
+            except mysql.connector.Error as err:
+                logger.exception("Error de MySQL durante la reposición del stock:")
+                raise
+
+            except Exception as e:
+                logger.exception("Error inesperado durante la reposición del stock:")
+                raise
+
+            finally:
+                if cursor:
+                    cursor.close()
+                if conexión and conexión.is_connected():
+                    conexión.close()
+                    
     def registrarVenta(self, datos, intentos=MÁX_INTENTOS):
         """
         Registra una nueva venta en la tabla VENTA.

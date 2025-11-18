@@ -131,6 +131,7 @@ BOTÓN_VACIAR_CARRITO_VENTA = "Vaciar carrito"
 ETIQUETA_PRECIO_VENTA = ""
 ANCHO_ENTRADA_CÓDIGO_VENTA = 20
 BOTÓN_FINALIZAR_VENTA = 'Finalizar venta'
+BOTÓN_ELIMINAR_VENTA_VENTA = "Eliminar venta"
 COLUMNA_BOTÓN_FINALIZAR_VENTA = 6
 FILA_BOTÓN_FINALIZAR_VENTA = 1
 ANCHO_ENTRADA_CANTIDAD_VENTA = 20
@@ -138,6 +139,8 @@ PADX_GENERAL_VENTA = 5
 PADY_GENERAL_VENTA = 5
 STICKY_WIDGET_OESTE_VENTA = "w"
 STICKY_WIDGET_CENTRO_PRECIO_VENTA = "wens"
+STOCK_ACTUAL_TABLA_ALERTA = 1
+STOCK_MÍNIMO_TABLA_ALERTA = 2
 
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
@@ -393,7 +396,7 @@ class Aplicación(tk.Tk):
                                         padx=10, pady=(0, 0), sticky="w")
 
         # --- 2. Definir Columnas ---
-        columnas_stock = ('código', 'nombre', 'stock_actual', 'stock_mínimo')
+        columnas_stock = ('código', 'stock_actual', 'stock_mínimo', 'nombre')
 
         self.tabla_stock_alerta = ttk.Treeview(
             self.página_cuaderno_productos,
@@ -408,9 +411,9 @@ class Aplicación(tk.Tk):
 
         # --- 4. Definir Encabezados ---
         self.tabla_stock_alerta.heading('código', text='Código', anchor='w')
-        self.tabla_stock_alerta.heading('nombre', text='Nombre', anchor='w')
         self.tabla_stock_alerta.heading('stock_actual', text='Stock actual', anchor='center')
         self.tabla_stock_alerta.heading('stock_mínimo', text='Stock mínimo', anchor='center')
+        self.tabla_stock_alerta.heading('nombre', text='Nombre', anchor='w')
 
         # --- 5. Posicionar la Tabla ---
         self.tabla_stock_alerta.grid(
@@ -423,10 +426,10 @@ class Aplicación(tk.Tk):
 
         # --- 6. Definir Anchos de Columna ---
         # (Ajustados para que la tabla se expanda)
-        self.tabla_stock_alerta.column("código", anchor='w', width=150, stretch=tk.NO)
-        self.tabla_stock_alerta.column("nombre", anchor='w', width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS, stretch=tk.NO) # Se estira
+        self.tabla_stock_alerta.column("código", anchor='w', width=100, stretch=tk.NO)
         self.tabla_stock_alerta.column("stock_actual", anchor='center', width=100, stretch=tk.NO)
         self.tabla_stock_alerta.column("stock_mínimo", anchor='center', width=100, stretch=tk.NO)
+        self.tabla_stock_alerta.column("nombre", anchor='w', width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS, stretch=tk.NO) # Se estira
         
         # --- 7. Scrollbars para la nueva tabla ---
         self.barra_desplazamiento_vertical_stock = ttk.Scrollbar(
@@ -751,8 +754,6 @@ class Aplicación(tk.Tk):
         # Carga todos los datos en la tabla
         self.cargarTablaProducto()  # Llama a la función que SÍ usa self.datos
 
-    # (Después de la función crearTablaConVentas)
-
     def crearLabelFrameVentaProducto(self):
         """
         Crea el LabelFrame para agregar productos a una venta en la pestaña 'Ventas'.
@@ -838,7 +839,7 @@ class Aplicación(tk.Tk):
                                                  anchor='center')
         
         self.etiqueta_precio_venta.grid(column=0, row=1,
-                                        columnspan=4, 
+                                        columnspan=3, 
                                         padx=PADX_GENERAL_VENTA, 
                                         pady=PADY_GENERAL_VENTA, 
                                         sticky=STICKY_WIDGET_CENTRO_PRECIO_VENTA)
@@ -862,6 +863,16 @@ class Aplicación(tk.Tk):
                                    sticky=STICKY_WIDGET_OESTE_VENTA)
 
         # --- Fila 2 (Interior) ---
+        
+        # Botón "Eliminar venta"
+        self.botón_eliminar_venta = ttk.Button(self.labelframe_venta_producto, 
+                                               text=BOTÓN_ELIMINAR_VENTA_VENTA,
+                                               command=self.eliminarVenta, # Asignamos la nueva función
+                                               state='disabled')
+        self.botón_eliminar_venta.grid(column=3, row=1, # Col 3, Fila 1 (Nuevo espacio)
+                                      padx=PADX_GENERAL_VENTA, 
+                                      pady=PADY_GENERAL_VENTA, 
+                                      sticky=STICKY_WIDGET_OESTE_VENTA)
         
         # Botón "Vaciar carrito"
         self.botón_vaciar_carrito = ttk.Button(self.labelframe_venta_producto, 
@@ -964,6 +975,9 @@ class Aplicación(tk.Tk):
 
             # 6. Actualizar la etiqueta del total
             self.etiqueta_valor_total_produdcto.config(text=f"{total_recuperado:.2f}")
+
+            # Activar el botón "Eliminar venta"
+            self.botón_eliminar_venta.config(state='normal')
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error al cargar los detalles: {str(e)}")
@@ -1458,7 +1472,7 @@ class Aplicación(tk.Tk):
         # 4. Cargar datos filtrados en la tabla de alertas
         if stock_en_alerta:
             for producto_alerta in stock_en_alerta:
-                if int(producto_alerta[2]) <= int(producto_alerta[3]):  # stock_actual <= stock_mínimo
+                if int(producto_alerta[STOCK_ACTUAL_TABLA_ALERTA]) <= int(producto_alerta[STOCK_MÍNIMO_TABLA_ALERTA]):  # stock_actual <= stock_mínimo
                     self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta, tags=('alerta',))
                 else:
                     self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta)
@@ -1479,7 +1493,75 @@ class Aplicación(tk.Tk):
                 # en 'crearTablaConProductos' y la consulta a la BD.
                 self.tabla_productos.insert('', tk.END, values=producto)
 
-    # (Después de la línea 709, fin de crearLabelFrameVentaProducto)
+    def eliminarVenta(self):
+        """
+        Elimina la VENTA seleccionada de la tabla_ventas (historial).
+        
+        Primero, consulta los detalles de la venta para reponer el stock
+        de los productos vendidos. Luego, elimina la venta (y sus detalles
+        por CASCADA) y refresca la UI.
+        """
+        
+        # 1. Verificar que una VENTA esté seleccionada (tabla izquierda)
+        item_seleccionado = self.tabla_ventas.focus()
+        if not item_seleccionado:
+            messagebox.showwarning("Atención", 
+                                   "Debe seleccionar una Venta de la tabla de la izquierda (Historial) para poder eliminarla.")
+            return
+
+        # 2. Pedir confirmación
+        respuesta = messagebox.askyesno("Confirmar Eliminación", 
+                                        "¿Está seguro de que desea eliminar esta VENTA permanentemente?\n\n"
+                                        "El stock de los productos vendidos será repuesto. "
+                                        "Esta acción es irreversible.")
+        
+        if respuesta: # Si el usuario dijo "Sí"
+            try:
+                # 3. Obtener el ID de la Venta
+                datos = self.tabla_ventas.item(item_seleccionado)['values']
+                id_venta = datos[0] # El ID es la primera columna
+                
+                # 4. Consultar los detalles ANTES de borrar
+                # (Devuelve: codigo, nombre, precio_unitario, cantidad, subtotal)
+                detalles = self.base_de_datos.consultarDetalleVenta(id_venta)
+                
+                if detalles is None:
+                    messagebox.showerror("Error", "No se pudieron obtener los detalles de la venta para reponer el stock.")
+                    return
+                
+                # 5. Reponer el stock para cada ítem
+                for item in detalles:
+                    codigo = item[0]
+                    cantidad = int(item[3])
+                    # Llama a la nueva función de la BD
+                    self.base_de_datos.reponerStockProducto([cantidad, codigo])
+                
+                # 6. Llamar a la BD para eliminar la VENTA
+                # (ON DELETE CASCADE borrará los DETALLE_VENTA)
+                self.base_de_datos.eliminarVentaPorID([id_venta])
+                
+                # 7. Limpiar el carrito (si estaba mostrando los detalles de la venta borrada)
+                # (Llamamos a vaciarCarrito pero sin la confirmación)
+                funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
+                self.etiqueta_valor_total_produdcto.config(text="0.00")
+                
+                # 8. Refrescar la tabla de ventas
+                self.actualizarTablaVentasEnHilo()
+                
+                # 9. Refrescar la tabla de productos (el stock cambió)
+                self.datos = self.base_de_datos.consultarDatosProductos()
+                self.cargarDatosEnTablaEnHilo() # Actualiza productos y alertas
+                
+                messagebox.showinfo("Éxito", "Venta eliminada y stock repuesto correctamente.")
+
+                # Desactiva el botón "Eliminar venta"
+                self.botón_eliminar_venta.config(state='disabled')
+
+                # Deselecciona cualquier fila activa en la tabla de ventas
+                self.tabla_ventas.selection_set(())
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo eliminar la venta: {str(e)}")
 
     def verPrecioProducto(self):
         """
