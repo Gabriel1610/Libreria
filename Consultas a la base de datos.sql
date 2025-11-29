@@ -76,3 +76,62 @@ VALUES
     ('VAR-002', 'Cartuchera Canopla 2 Cierres', 'Cartuchera tipo canopla con dos compartimentos y cierres.', 18000.00, 60, 10),
     ('ESC-009', 'Sacapuntas Maped con Depósito', 'Sacapuntas plástico con depósito para virutas.', 1950.00, 150, 20),
     ('ESC-010', 'Set 12 Lápices de Colores Largos Faber-Castell', 'Caja de 12 lápices de colores, mina resistente.', 7200.00, 100, 15);
+
+INSERT INTO PRODUCTO (codigo, nombre, descripcion, precio_venta, stock_actual, stock_minimo) VALUES
+('NOTE-A4-100', 'Cuaderno A4 100 hojas', 'Cuaderno rayado de tamaño A4 con 100 hojas blancas', 450.00, 120, 10),
+('NOTE-A5-70', 'Cuaderno A5 70 hojas', 'Cuaderno con tapas blandas y hojas lisas', 320.00, 200, 20),
+('PEN-BIC-RT', 'Bolígrafo Bic Round Stic', 'Esfera negra con tinta azul', 80.00, 500, 50),
+('PEN-PILOT-G2', 'Bolígrafo Pilot G2 0.7mm', 'Tinta gel suave y recargable', 250.00, 150, 30),
+('PENC-FABER-CASTELL', 'Lápiz Faber-Castell 2B', 'Lápiz de grafito para dibujo y escritura', 70.00, 300, 40),
+('MARK-STABILO-POINT88', 'Marcador Stabilo Point 88', 'Puntiagudo fino para subrayado y notas', 150.00, 180, 20),
+('HIGHL-LUCI-FLUO', 'Resaltador Luci Fluo Amarillo', 'Alta visibilidad para resaltar textos', 110.00, 220, 30),
+('GLUE-PATEX-50', 'Pegamento en barra Patex 50g', 'Barrita de pegamento sin olor', 130.00, 140, 25),
+('SCIS-BOXER-13', 'Tijera Boxer 13 cm', 'Tijera pequeña con mango ergonómico', 95.00, 90, 15),
+('ERAS-KOOL-PLAST', 'Goma de borrar Kool Plast', 'Goma blanda que no daña el papel', 60.00, 250, 30),
+('SHARP-FABER-CASTELL', 'Sacapuntas Faber-Castell con depósito', 'Sacapuntas metálico con contenedor de viruta', 180.00, 110, 15),
+('BOOK-BORGES-FICCION', 'Libro "Ficciones" de Borges', 'Colección de cuentos de JORGE LUIS BORGES', 1200.00, 50, 5),
+('BOOK-CORTAZAR-RAYUELA', 'Libro "Rayuela" de Cortázar', 'Novela emblemática de JULIO CORTÁZAR', 1300.00, 40, 5),
+('NOTE-QUILL-SKETCH', 'Cuaderno para dibujo Quill Sketch', 'Hojas de papel grueso para lápiz y acuarela', 850.00, 90, 10),
+('COPY-PAPER-A4-500', 'Resma papel A4 500 hojas', 'Hoja blanca para impresora o copias', 3200.00, 30, 5);
+
+INSERT INTO VENTA (fecha_hora) VALUES
+('2025-11-01 09:15:00'),
+('2025-11-01 17:40:00'),
+('2025-11-02 10:05:00'),
+('2025-11-03 14:30:00'),
+('2025-11-04 11:22:00'),
+('2025-11-05 18:45:00'),
+('2025-11-06 08:55:00'),
+('2025-11-07 19:10:00'),
+('2025-11-08 12:40:00'),
+('2025-11-10 16:25:00'),
+('2025-11-12 09:50:00'),
+('2025-11-14 13:15:00'),
+('2025-11-18 11:05:00'),
+('2025-11-20 17:55:00'),
+('2025-11-25 10:33:00');
+
+DELETE
+FROM
+	VENTA
+WHERE
+	id_venta NOT IN (SELECT
+						DISTINCT id_venta
+					FROM
+						DETALLE_VENTA);
+
+-- Nota: Asumimos que los id_venta 13-22 fueron creados en la tabla VENTA.
+-- La columna 'precio_unitario' debe coincidir con el precio de venta del producto en ese momento.
+
+SELECT * FROM VENTA;
+
+SELECT
+	V.id_venta,
+    DV.id_producto
+FROM
+	DETALLE_VENTA AS DV
+JOIN
+	VENTA AS V ON V.id_venta = DV.id_venta;
+
+
+SELECT * FROM PRODUCTO;

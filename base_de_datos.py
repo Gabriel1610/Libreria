@@ -91,7 +91,7 @@ class BaseDeDatos:
 
         Args:
             datos (list): Una lista con los datos del producto en el orden:
-                          [codigo, nombre, descripcion, precio_venta, 
+                          [codigo, nombre, nombre, descripcion, descripcion, precio_venta, 
                            stock_actual, stock_minimo]
             intentos (int): Número máximo de reintentos en caso de deadlock.
         """
@@ -111,7 +111,7 @@ class BaseDeDatos:
                 # Consulta adaptada a la tabla PRODUCTO
                 # (El orden de columnas coincide con la lista 'producto' de Programa.py)
                 consulta = """INSERT INTO PRODUCTO(codigo, nombre, descripcion, precio_venta, stock_actual, stock_minimo)
-                              VALUES(%s, %s, %s, %s, %s, %s);
+                              VALUES(%s, CONCAT(UCASE(LEFT(%s, 1)), SUBSTRING(%s, 2)), CONCAT(UCASE(LEFT(%s, 1)), SUBSTRING(%s, 2)), %s, %s, %s);
                            """
                 
                 cursor.execute(consulta, datos)
@@ -1113,14 +1113,14 @@ class BaseDeDatos:
                     raise # Relanzar otros InternalError
 
             except mysql.connector.Error as err:
-                # Registra un error específico de MySQL
-                logger.exception("Error de MySQL durante la eliminación del producto:")
-                raise
-
-            except Exception as e:
-                # Registra cualquier otro error inesperado
-                logger.exception("Error inesperado durante la eliminación del producto:")
-                raise
+                if err.errno == 1451:
+                    mensaje = f"No se puede eliminar este producto porque tiene ventas registradas. Elimine las ventas primero."
+                    logger.warning(mensaje)
+                    raise ValueError(mensaje) # Lanzamos un error simple para la UI
+                else:
+                    # Registra cualquier otro error de MySQL
+                    logger.exception("Error de MySQL durante la eliminación del producto:")
+                    raise
 
             finally:
                 # Este bloque se ejecuta siempre

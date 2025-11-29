@@ -41,7 +41,7 @@ PADX_ETIQUETA_NOMBRE_PRODUCTOS = 0
 PADY_ETIQUETA_NOMBRE_PRODUCTOS = 0  # Padding específico para la etiqueta nombre
 PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS = (50, 0)
 
-ANCHO_COLUMNA_NOMBRE_PRODUCTOS = 480
+ANCHO_COLUMNA_NOMBRE_PRODUCTOS = 425
 
 PADX_ETIQUETA_PRECIO_PRODUCTOS = 0
 PADY_ETIQUETA_PRECIO_PRODUCTOS = 0  # Padding específico para la etiqueta precio
@@ -268,7 +268,7 @@ class Aplicación(tk.Tk):
             
             # Configura la función que se ejecutará cuando se cierre la ventana.
             self.protocol("WM_DELETE_WINDOW", self.cerrarVentana)
-
+            self.cuaderno.bind("<<NotebookTabChanged>>", self.al_cambiar_pestaña)
             # Carga los datos en la tabla productos (en un hilo separado).
             self.cargarDatosEnTablaEnHilo()
 
@@ -276,6 +276,25 @@ class Aplicación(tk.Tk):
             messagebox.showerror("Error crítico", f"Fallo en inicialización: {str(e)}")
             sys.exit(1)
     
+    def al_cambiar_pestaña(self, event):
+        """
+        Detecta cuando el usuario cambia de pestaña.
+        Si la pestaña seleccionada es "Ventas", pone el foco en la entrada de código.
+        """
+        try:
+            # Obtener el índice de la pestaña actual
+            pestaña_actual = self.cuaderno.index("current")
+            
+            # Verificar si es la pestaña de Ventas
+            if pestaña_actual == self.índice_ventas:
+                # Usamos after_idle para asegurar que la pestaña se haya 
+                # dibujado completamente antes de intentar poner el foco.
+                self.entrada_código_venta.after_idle(self.entrada_código_venta.focus)
+            else:
+                self.entrada_código.after_idle(self.entrada_código.focus)
+        except Exception:
+            pass # Evitar errores si se cierra la app mientras se cambia
+
     def crearTablaConProductos(self):
 
         # --- 1. Crear la Etiqueta ---
@@ -320,8 +339,8 @@ class Aplicación(tk.Tk):
         self.tabla_productos.column(
             "código",
             anchor='w',
-            width=150,
-            minwidth=150,
+            width=205,
+            minwidth=205,
             stretch=tk.NO
         )
         self.tabla_productos.column(
@@ -426,7 +445,7 @@ class Aplicación(tk.Tk):
 
         # --- 6. Definir Anchos de Columna ---
         # (Ajustados para que la tabla se expanda)
-        self.tabla_stock_alerta.column("código", anchor='w', width=100, stretch=tk.NO)
+        self.tabla_stock_alerta.column("código", anchor='w', width=205, stretch=tk.NO)
         self.tabla_stock_alerta.column("stock_actual", anchor='center', width=100, stretch=tk.NO)
         self.tabla_stock_alerta.column("stock_mínimo", anchor='center', width=100, stretch=tk.NO)
         self.tabla_stock_alerta.column("nombre", anchor='w', width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS, stretch=tk.NO) # Se estira
@@ -924,6 +943,10 @@ class Aplicación(tk.Tk):
             
             # 4. Resetear el total a 0.00
             self.etiqueta_valor_total_produdcto.config(text="0.00")
+            self.botón_eliminar_venta.config(state='disabled')  # Desactivar el botón "Eliminar venta"
+            
+            # Deseleccionar filas en tabla_ventas
+            self.tabla_ventas.selection_set(())
 
     def cargarDetalleVentaEnCarrito(self, event=None):
         """
@@ -1138,7 +1161,7 @@ class Aplicación(tk.Tk):
 
         for item_id in self.tabla_carrito.get_children():
             fila = self.tabla_carrito.item(item_id, 'values')
-            if fila[0] == código: # Si el código (fila[0]) coincide
+            if fila[0].lower() == código.lower(): # Si el código (fila[0]) coincide
                 cantidad_en_carrito = int(fila[3]) # Obtener la cantidad (fila[3])
                 item_id_en_carrito = item_id # Guardar el ID de la fila
                 break # Encontramos el producto, salir del loop
@@ -1310,6 +1333,8 @@ class Aplicación(tk.Tk):
             producto = [
                 código,
                 nombre,
+                nombre,
+                descripción,
                 descripción,
                 precio,
                 stock_actual,
@@ -1401,6 +1426,15 @@ class Aplicación(tk.Tk):
         Crea la tabla (Treeview) para mostrar los productos
         agregados al "carrito" de la venta actual.
         """
+
+        # --- Crear la Etiqueta "Carrito" (Fila 0) ---
+        self.etiqueta_título_ventas = ttk.Label(self.página_cuaderno_ventas, 
+                                               text="Carrito de ventas", 
+                                               font=FUENTE_TÍTULO_PRODUCTOS)
+        
+        # Posicionar la etiqueta (Fila 0, Col 2)
+        self.etiqueta_título_ventas.grid(column=2, row=0, 
+                                        padx=5, pady=(2, 2), sticky="w")
         
         # --- 1. Definir Columnas ---
         columnas_carrito = ('código', 'nombre', 'precio_unitario', 'cantidad', 'subtotal')
@@ -1419,18 +1453,18 @@ class Aplicación(tk.Tk):
         self.tabla_carrito.heading('cantidad', text='Cantidad', anchor='center')
         self.tabla_carrito.heading('subtotal', text='Subtotal', anchor='center')
 
-        # --- 3. Posicionar la Tabla (Fila 2, Col 2, Colspan 2) ---
+        # --- 3. Posicionar la Tabla (Fila 1, Col 2, Colspan 2) ---
         self.tabla_carrito.grid(
-            row=0,
-            rowspan=2,
+            row=1, # Fila 1
+            rowspan=1,
             column=2,
-            columnspan=2, # Abarca las columnas 2 y 3
+            columnspan=2, # Abarca la columnas 2 y 3
             sticky='nsew' # Se expande en todas las direcciones
         )
 
         # --- 4. Definir Anchos de Columna ---
-        self.tabla_carrito.column("código", anchor='w', width=90, stretch=tk.NO)
-        self.tabla_carrito.column("nombre", anchor='w', width=400) # Columna expandible
+        self.tabla_carrito.column("código", anchor='w', width=200, stretch=tk.NO)
+        self.tabla_carrito.column("nombre", anchor='w', width=290) # Columna expandible
         self.tabla_carrito.column("precio_unitario", anchor='e', width=100, stretch=tk.NO)
         self.tabla_carrito.column("cantidad", anchor='center', width=60, stretch=tk.NO)
         self.tabla_carrito.column("subtotal", anchor='e', width=110, stretch=tk.NO)
@@ -1451,7 +1485,7 @@ class Aplicación(tk.Tk):
         self.tabla_carrito.configure(yscrollcommand=self.barra_desplazamiento_vertical_carrito.set)
 
         # --- 6. Posicionar scrollbars ---
-        self.barra_desplazamiento_vertical_carrito.grid(row=0, rowspan=2, column=4, sticky='ns')
+        self.barra_desplazamiento_vertical_carrito.grid(row=1, rowspan=1, column=4, sticky='ns')
         self.barra_desplazamiento_horizontal_carrito.grid(row=2, column=2, columnspan=2, sticky='we')
 
     def actualizarTablaStockAlerta(self):
@@ -1497,9 +1531,10 @@ class Aplicación(tk.Tk):
         """
         Elimina la VENTA seleccionada de la tabla_ventas (historial).
         
-        Primero, consulta los detalles de la venta para reponer el stock
-        de los productos vendidos. Luego, elimina la venta (y sus detalles
-        por CASCADA) y refresca la UI.
+        1. Pide confirmación para eliminar la venta.
+        2. Si se elimina, pregunta si se desea REPONER el stock de los productos.
+        3. Si responde SÍ: actualiza el stock.
+        4. Finalmente elimina la venta de la BD y refresca la interfaz.
         """
         
         # 1. Verificar que una VENTA esté seleccionada (tabla izquierda)
@@ -1509,55 +1544,57 @@ class Aplicación(tk.Tk):
                                    "Debe seleccionar una Venta de la tabla de la izquierda (Historial) para poder eliminarla.")
             return
 
-        # 2. Pedir confirmación
-        respuesta = messagebox.askyesno("Confirmar Eliminación", 
-                                        "¿Está seguro de que desea eliminar esta VENTA permanentemente?\n\n"
-                                        "El stock de los productos vendidos será repuesto. "
-                                        "Esta acción es irreversible.")
+        # 2. Pedir confirmación DE ELIMINACIÓN
+        respuesta_eliminar = messagebox.askyesno("Confirmar Eliminación", 
+                                        "¿Está seguro de que desea eliminar esta VENTA permanentemente?\n"
+                                        "Esta acción no se puede deshacer.")
         
-        if respuesta: # Si el usuario dijo "Sí"
+        if respuesta_eliminar:
             try:
                 # 3. Obtener el ID de la Venta
                 datos = self.tabla_ventas.item(item_seleccionado)['values']
                 id_venta = datos[0] # El ID es la primera columna
                 
-                # 4. Consultar los detalles ANTES de borrar
+                # 4. Consultar los detalles (necesarios para saber qué reponer)
                 # (Devuelve: codigo, nombre, precio_unitario, cantidad, subtotal)
                 detalles = self.base_de_datos.consultarDetalleVenta(id_venta)
                 
-                if detalles is None:
-                    messagebox.showerror("Error", "No se pudieron obtener los detalles de la venta para reponer el stock.")
-                    return
-                
-                # 5. Reponer el stock para cada ítem
-                for item in detalles:
-                    codigo = item[0]
-                    cantidad = int(item[3])
-                    # Llama a la nueva función de la BD
-                    self.base_de_datos.reponerStockProducto([cantidad, codigo])
-                
-                # 6. Llamar a la BD para eliminar la VENTA
-                # (ON DELETE CASCADE borrará los DETALLE_VENTA)
+                if detalles:
+                    # 5. Preguntar si se desea REPONER STOCK
+                    respuesta_reponer = messagebox.askyesno("Reponer Stock", 
+                                                            "¿Desea devolver los productos al stock?\n\n"
+                                                            "Sí: Se sumará la cantidad al stock actual.\n"
+                                                            "No: Solo se borrará el registro de la venta.")
+                    
+                    if respuesta_reponer:
+                        # Hacer el bucle para reponer uno por uno
+                        for item in detalles:
+                            codigo = item[0]
+                            cantidad = int(item[3])
+                            # Llama a la función existente en tu base_de_datos.py
+                            # Espera: [cantidad_repuesta, codigo_producto]
+                            self.base_de_datos.reponerStockProducto([cantidad, codigo])
+
+                # 6. Llamar a la BD para eliminar la VENTA (Siempre se hace)
+                # (ON DELETE CASCADE borrará los detalles automáticamente)
                 self.base_de_datos.eliminarVentaPorID([id_venta])
                 
-                # 7. Limpiar el carrito (si estaba mostrando los detalles de la venta borrada)
-                # (Llamamos a vaciarCarrito pero sin la confirmación)
+                # 7. Limpieza de la interfaz
+                # Si el carrito estaba mostrando esa venta, lo vaciamos visualmente
                 funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
                 self.etiqueta_valor_total_produdcto.config(text="0.00")
                 
                 # 8. Refrescar la tabla de ventas
                 self.actualizarTablaVentasEnHilo()
                 
-                # 9. Refrescar la tabla de productos (el stock cambió)
+                # 9. Refrescar la tabla de productos (por si el stock cambió)
                 self.datos = self.base_de_datos.consultarDatosProductos()
-                self.cargarDatosEnTablaEnHilo() # Actualiza productos y alertas
+                self.cargarDatosEnTablaEnHilo() # Actualiza productos y alertas de stock
                 
-                messagebox.showinfo("Éxito", "Venta eliminada y stock repuesto correctamente.")
+                messagebox.showinfo("Éxito", "Venta eliminada correctamente.")
 
-                # Desactiva el botón "Eliminar venta"
+                # Resetear controles
                 self.botón_eliminar_venta.config(state='disabled')
-
-                # Deselecciona cualquier fila activa en la tabla de ventas
                 self.tabla_ventas.selection_set(())
                 
             except Exception as e:
@@ -1794,6 +1831,9 @@ class Aplicación(tk.Tk):
                     
                     messagebox.showinfo("Éxito", "Producto eliminado correctamente.")
                 
+                except ValueError as ve:
+                    messagebox.showerror("No se puede eliminar", str(ve))
+                
                 except Exception as e:
                     messagebox.showerror("Error al Eliminar", 
                                          f"No se pudo eliminar el producto: {str(e)}")
@@ -1842,7 +1882,6 @@ class Aplicación(tk.Tk):
 
             if nuevo_valor > MÁX_CAR_DESCRIP:  # Si se supera el límite máximo.
                 nuevo_valor = MÁX_CAR_DESCRIP  # Trunca al máximo.
-                self.botón_añadir_a_favoritos.config(state = 'disabled') #Deshabilita el botón de añadir a favoritos
             if nuevo_valor < 0:  # Si el valor es negativo.
                 nuevo_valor = 0  # Establece en 0.
                 self.texto_desplazado.delete("1.0", tk.END)  # Borra todo el contenido.
@@ -1896,7 +1935,6 @@ class Aplicación(tk.Tk):
             # se permite el evento para no bloquear atajos de teclado comunes.
             # Además, se habilita el botón de añadir a favoritos para indicar que puede usarse.
             retornar = None
-            self.botón_añadir_a_favoritos.config(state = 'normal') #Habilita el botón de añadir a favoritos
         elif tecla_símbolo in ('Left', 'Right') and self.texto_desplazado.tag_ranges("sel") and not (event.state & 0x0001):
             # Si se presionan las teclas de flecha izquierda o derecha,
             # y hay texto seleccionado (tag "sel" activo),
