@@ -8,6 +8,7 @@ import tkinter as tk
 import threading
 import socket
 import platform
+from MensajeModerno import MensajeModerno
 
 POS_ONEDRIVE_NOTEBOOK_POSADAS = r'D:'
 POS_ONEDRIVE_NOTEBOOK_RESISTENCIA = r'C:\Users\Gabriel'
@@ -49,16 +50,49 @@ def obtenerNúmeroEnteroNatural(mínimo, primer_mensaje, mensaje_error_tipo_dato
             controlar = False
     return valor
 
-def esNúmeroDecimalConXDecimales(número, cant_decimales):
-    es_decimal = validación_tipo_de_datos.esEntero(número)
-    if not es_decimal:
-        es_decimal = validación_tipo_de_datos.esDecimal(número)
-        if es_decimal:
-            if len(número) > cant_decimales + 1:
-                parte = número[-cant_decimales - 1:]
-                if "." not in parte:
-                    es_decimal = False
-    return es_decimal
+def esNúmeroDecimalConLímites(número, máx_dígitos_totales, máx_decimales):
+    """
+    Valida si un string es un número decimal válido respetando límites de dígitos.
+    Permite ceros no significativos a la derecha en la parte decimal.
+    
+    Ej: DECIMAL(10, 2). 
+    Acepta "12.5000" porque al recortar ceros queda "12.5" (1 decimal < 2).
+    Rechaza "12.555" porque queda "12.555" (3 decimales > 2).
+    """
+    if not número: return True # Permitir vacío mientras se escribe
+    
+    try:
+        float(número) # Primera validación simple: ¿es número?
+    except ValueError:
+        return False
+
+    partes = número.split('.')
+    
+    # Validar parte entera
+    parte_entera = partes[0]
+    
+    # Si el número es negativo, el signo '-' no cuenta como dígito de precisión en la BD
+    longitud_entera = len(parte_entera)
+    if parte_entera.startswith('-'):
+        longitud_entera -= 1
+        
+    máx_enteros = máx_dígitos_totales - máx_decimales
+    if longitud_entera > máx_enteros:
+        return False
+        
+    # Validar parte decimal con recorte de ceros
+    if len(partes) > 1:
+        parte_decimal = partes[1]
+        
+        # CAMBIO CLAVE: Recortar ceros a la derecha antes de medir
+        # "500" -> "5" (len 1)
+        # "00" -> "" (len 0)
+        parte_decimal_significativa = parte_decimal.rstrip('0')
+        
+        if len(parte_decimal_significativa) > máx_decimales:
+            return False
+            
+    return True
 
 def obtenerNombreEquipo():
     # Preferencia: socket (portátil)
@@ -234,60 +268,75 @@ def respaldarBaseDeDatos(base_de_datos):
     ubicación_notebook = obtenerUbicaciónNotebook()
     base_de_datos.respaldarBaseDeDatos(ubicación_notebook + NOMBRE_CARPETA_RESPALDO_BASE_DE_DATOS)
 
-def controlar_caracteres_precio(importe, entrada_importe, event=None):
+def controlar_caracteres_precio(importe, entrada_importe, máx_dígitos=10, máx_decimales=2, event=None):
     """
-    Controla los caracteres ingresados en el campo de entrada del importe.
-
-    Esta función actúa como un filtro para el campo de entrada 'entrada_importe',
-    asegurando que solo se permitan números, un punto decimal, y teclas especiales
-    como BackSpace, Delete, las flechas, etc. También maneja el pegado (Ctrl+V)
-    para validar que el texto pegado sea un número decimal válido con hasta 2 decimales.
-
-    Args:
-        event (tk.Event, optional): El evento de teclado que desencadenó la función.
-            Se utiliza para obtener el carácter ingresado ('event.char'), la tecla
-            presionada ('event.keysym') y el estado del teclado ('event.state').
-            Defaults to None.
-
-    Returns:
-        str or None: Retorna "break" si el carácter ingresado no es válido (para
-            evitar que se inserte). Retorna None si el carácter es válido o si
-            se está manejando un evento de pegado.
+    Controla la entrada de caracteres verificando longitud total y decimales.
+    Muestra una advertencia si se excede el límite.
     """
-    retornar = "break"  # Valor por defecto: evita la inserción del carácter.
-    carácter = event.char  # Obtiene el carácter individual ingresado.
-    tecla = event.keysym.lower()  # Obtiene la tecla presionada (en minúsculas).
 
-    # Permite dígitos, punto decimal, teclas de navegación/edición y combinaciones Ctrl+X/C/V.
-    if (carácter and carácter in '0123456789.') or \
-       (event and (event.keysym == 'BackSpace' or event.keysym.startswith('Shift') or \
-                   event.keysym in ('Delete', 'Home', 'End', 'Up', 'Down', 'Left', 'Right'))) or \
-       (event.state & 0x0004 and tecla in ['x', 'v', 'c']):
+    retornar = "break"
+    carácter = event.char
+    tecla = event.keysym.lower()
 
-        # Maneja el pegado (Ctrl+V) y la entrada de números/punto.
-        if (event.state & 0x0004 and tecla == 'v') or (carácter and carácter in '0123456789.'):
-            contenido_antes = importe.get()  # Guarda el contenido actual del campo.
-            posición_cursor_antes = entrada_importe.index("insert")  # Guarda la posición del cursor.
-            retornar = None  # Permite la inserción (temporalmente).
+    # Construcción dinámica del mensaje de límite (Ej: "99999999.99")
+    cant_enteros = máx_dígitos - máx_decimales
+    max_valor_str = f"{'9' * cant_enteros}.{'9' * máx_decimales}"
 
-            # Define una función para actualizar el contenido después del pegado.
-            def actualizar_contenido():
-                """
-                Valida y corrige el contenido del campo después de un evento de pegado.
-                Se asegura que el contenido sea un número decimal con como máximo 2 decimales.
-                Si no lo es, revierte al contenido anterior y reposiciona el cursor.
-                """
-                contenido_después = importe.get()  # Obtiene el contenido después del pegado.
-                es_decimal = esNúmeroDecimalConXDecimales(contenido_después, 2)
-                if not es_decimal:  # Si el contenido no es un decimal válido.
-                    importe.set(contenido_antes)  # Restaura el contenido anterior.
-                    entrada_importe.icursor(posición_cursor_antes)  # Restaura la posición del cursor.
+    # Lógica para teclas de control
+    es_tecla_control = (event.keysym in ('BackSpace', 'Delete', 'Left', 'Right', 'Home', 'End', 'Tab'))
+    es_copiar_pegar = (event.state & 0x0004 and tecla in ['x', 'v', 'c'])
 
-            # Ejecuta 'actualizar_contenido' después de que Tkinter termine de procesar el evento de pegado.
-            entrada_importe.after_idle(actualizar_contenido)
+    if es_tecla_control or es_copiar_pegar:
+        
+        if tecla == 'v': # Pegar
+            contenido_antes = importe.get()
+            pos_antes = entrada_importe.index("insert")
+            retornar = None 
+
+            def validar_pegado():
+                contenido = importe.get()
+                if not esNúmeroDecimalConLímites(contenido, máx_dígitos, máx_decimales):
+                    importe.set(contenido_antes)
+                    entrada_importe.icursor(pos_antes)
+                    # Advertencia al pegar
+                    if float(contenido) > float(max_valor_str):
+                        MensajeModerno(entrada_importe.winfo_toplevel(), "Valor fuera de rango", 
+                                   f"El valor del precio debe ser menor o igual a $ {max_valor_str}", tipo="advertencia")
+                    else:
+                        MensajeModerno(entrada_importe.winfo_toplevel(), "Formato inválido", 
+                                   f"El valor pegado no es un número decimal válido. Se permiten números decimales con hasta {máx_decimales} decimales.", tipo="advertencia")
+            
+            entrada_importe.after_idle(validar_pegado)
         else:
-            retornar = None  # Permite la inserción de dígitos y punto decimal.
-    return retornar  # Retorna "break" si el carácter no es válido, None si es válido.
+            return None 
+
+    # Lógica para caracteres numéricos y punto
+    elif carácter and (carácter.isdigit() or carácter == '.'):
+        texto_actual = importe.get()
+        pos_cursor = entrada_importe.index("insert")
+        
+        # Construir el nuevo texto hipotético
+        if entrada_importe.select_present():
+            sel_start = entrada_importe.index("sel.first")
+            sel_end = entrada_importe.index("sel.last")
+            nuevo_texto = texto_actual[:sel_start] + carácter + texto_actual[sel_end:]
+        else:
+            nuevo_texto = texto_actual[:pos_cursor] + carácter + texto_actual[pos_cursor:]
+
+        # Validar
+        if esNúmeroDecimalConLímites(nuevo_texto, máx_dígitos, máx_decimales):
+            return None # Aceptar
+        else:
+            if float(nuevo_texto) > float(max_valor_str):
+                # Advertencia al escribir
+                MensajeModerno(entrada_importe.winfo_toplevel(), "Valor fuera de rango", 
+                            f"El valor del precio debe ser menor o igual a $ {max_valor_str}", tipo="advertencia")
+            else:
+                MensajeModerno(entrada_importe.winfo_toplevel(), "Formato inválido", 
+                            f"El valor ingresado no es un número decimal válido. Se permiten números decimales con hasta {máx_decimales} decimales.", tipo="advertencia")
+            return "break" 
+            
+    return retornar
 
 def borrarTodasLasFilas(tabla):
     """

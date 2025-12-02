@@ -133,18 +133,30 @@ class BaseDeDatos:
                     raise  # Relanzar otros InternalError
 
             except mysql.connector.Error as err:
-                # Error 1062: Violación de restricción UNIQUE (código duplicado)
+                # Error 1062: Código duplicado
                 if err.errno == 1062: 
                     mensaje_error = f"Error: Ya existe un producto con ese código. (Detalle: {err.msg})"
                     logger.warning(mensaje_error)
-                    
-                    # Lanza un error simple que la UI pueda capturar
                     raise ValueError(f"Ya existe un producto con ese código.")
-                # --- FIN NUEVA LÓGICA ---
+                
+                # --- NUEVA CAPTURA DE ERROR ---
+                # Error 1264: Valor fuera de rango (número muy grande)
+                elif err.errno == 1264:
+                    columna = "desconocida"
+                    if "precio_venta" in str(err):
+                        columna = "Precio"
+                    elif "stock" in str(err):
+                        columna = "Stock"
+                    
+                    mensaje_usuario = f"El valor ingresado en '{columna}' es demasiado grande para el sistema. Debe ingresar un precio menor o igual a $ 99.999.999,99"
+                    logger.warning(f"Error de rango en BD: {err.msg}")
+                    raise ValueError(mensaje_usuario)
+                # ------------------------------
+
                 else:
                     # Registra cualquier otro error de MySQL
                     logger.exception("Error de MySQL durante el ingreso del producto:")
-                    raise # Relanza la excepción original si no es la 1062
+                    raise
 
             except Exception as e:
                 # Registra cualquier otro error inesperado
@@ -487,10 +499,10 @@ class BaseDeDatos:
 
     def consultarDatosProductos(self):
         """
-        Consulta y devuelve todos los productos de la tabla PRODUCTO.
+        Consulta y devuelve todos los productos ACTIVOS (eliminado = 0) de la tabla PRODUCTO.
 
         Los datos se devuelven en el orden esperado por el Treeview de la UI:
-        (codigo, nombre, precio_venta, stock_actual, stock_minimo, descripcion)
+        (codigo, nombre, precio_venta, stock_actual, stock_minimo, descripcion, id_producto)
 
         Returns:
             list: Una lista de tuplas, donde cada tupla es un producto.
@@ -505,9 +517,7 @@ class BaseDeDatos:
             conexión = self.abrir()
             cursor = conexión.cursor()
             
-            # 2. Base de la consulta SQL
-            # Seleccionamos las columnas en el orden que espera la tabla (Treeview)
-            # (Según tu función crearTablaConProductos, el precio va antes del stock)
+            # 2. Consulta SQL modificada para incluir el filtro de eliminación lógica
             consulta = """SELECT codigo, 
                                  nombre, 
                                  precio_venta, 
@@ -516,15 +526,16 @@ class BaseDeDatos:
                                  descripcion,
                                  id_producto
                           FROM PRODUCTO
+                          WHERE eliminado = 0  -- Solo productos donde el flag es False (activos)
                           ORDER BY nombre; 
                        """
             
             # 3. Ejecución de la consulta
             cursor.execute(consulta)
             filas = cursor.fetchall()
-            logger.info(f"Se consultaron {len(filas)} productos de la base de datos.")
+            logger.info(f"Se consultaron {len(filas)} productos activos de la base de datos.")
             return filas
-        
+            
         except mysql.connector.Error as err:
             logger.exception("Error de MySQL al consultar los productos:")
             return None
@@ -596,20 +607,29 @@ class BaseDeDatos:
                 else:
                     raise # Relanzar otros InternalError
 
-            # --- BLOQUE MODIFICADO ---
             except mysql.connector.Error as err:
-                # Error 1062: Violación de restricción UNIQUE (código duplicado)
+                # Error 1062: Código duplicado
                 if err.errno == 1062: 
                     mensaje_error = f"Error: Ya existe un producto con ese código. (Detalle: {err.msg})"
                     logger.warning(mensaje_error)
-                    
-                    # Lanza un error simple que la UI pueda capturar
                     raise ValueError(f"Ya existe un producto con ese código.")
+                
+                # Error 1264: Valor fuera de rango
+                elif err.errno == 1264:
+                    columna = "desconocida"
+                    if "precio_venta" in str(err):
+                        columna = "Precio"
+                    elif "stock" in str(err):
+                        columna = "Stock"
+                    
+                    mensaje_usuario = f"El valor ingresado en '{columna}' es demasiado grande para el sistema. Debe ingresar un precio menor o igual a $ 99.999.999,99"
+                    logger.warning(f"Error de rango en BD al modificar: {err.msg}")
+                    raise ValueError(mensaje_usuario)
+
                 else:
                     # Registra cualquier otro error de MySQL
                     logger.exception("Error de MySQL durante la modificación del producto:")
-                    raise # Relanza la excepción original si no es la 1062
-            # --- FIN DEL BLOQUE MODIFICADO ---
+                    raise
 
             except Exception as e:
                 # Registra cualquier otro error inesperado
@@ -1066,7 +1086,7 @@ class BaseDeDatos:
     
     def eliminarProductoPorID(self, datos, intentos=MÁX_INTENTOS):
         """
-        Elimina un producto existente de la tabla PRODUCTO usando su ID.
+        Elimina LÓGICAMENTE un producto existente de la tabla PRODUCTO usando su ID.
         Maneja reintentos en caso de deadlock.
 
         Args:
@@ -1089,15 +1109,22 @@ class BaseDeDatos:
                 conexión = self.abrir()  # Abrir la conexión
                 cursor = conexión.cursor()
                 
-                # Consulta adaptada para eliminar el producto
-                consulta = """DELETE FROM PRODUCTO
+                # Consulta ADAPTADA para la eliminación LÓGICA (UPDATE)
+                consulta = """UPDATE PRODUCTO
+                              SET eliminado = 1
                               WHERE id_producto = %s;
                            """
                 
                 cursor.execute(consulta, datos)
+                
+                # Se verifica si realmente se afectó una fila (el producto existía y no estaba ya eliminado)
+                if cursor.rowcount == 0:
+                    logger.warning(f"Producto ID: {id_del_producto} no encontrado o ya estaba eliminado.")
+                    # Aún si no se encontró, la operación es exitosa desde el punto de vista lógico (el producto no está activo)
+                
                 conexión.commit()  # Confirmar la transacción
                 reintentar = False
-                logger.info(f"Producto ID: {id_del_producto} eliminado exitosamente.")
+                logger.info(f"Producto ID: {id_del_producto} eliminado LÓGICAMENTE.")
 
             except mysql.connector.errors.InternalError as err:
                 intento += 1
@@ -1113,14 +1140,8 @@ class BaseDeDatos:
                     raise # Relanzar otros InternalError
 
             except mysql.connector.Error as err:
-                if err.errno == 1451:
-                    mensaje = f"No se puede eliminar este producto porque tiene ventas registradas. Elimine las ventas primero."
-                    logger.warning(mensaje)
-                    raise ValueError(mensaje) # Lanzamos un error simple para la UI
-                else:
-                    # Registra cualquier otro error de MySQL
-                    logger.exception("Error de MySQL durante la eliminación del producto:")
-                    raise
+                logger.exception("Error de MySQL durante la eliminación lógica del producto:")
+                raise
 
             finally:
                 # Este bloque se ejecuta siempre

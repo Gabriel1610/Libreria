@@ -13,6 +13,7 @@ import sys
 from datetime import datetime
 import funciones_útiles
 import validación_tipo_de_datos
+from MensajeModerno import MensajeModerno
 
 NOMBRE_ICONO = "librería.ico"
 TAMAÑO_MÍNIMO_COLUMNA1_CPM = 620
@@ -21,16 +22,16 @@ TIEMPO_A_ESPERAR_MÁXIMO = 5
 # --- Constantes para la UI de Productos ---
 
 # Textos de etiquetas
-TÍTULO_LABELFRAME_PRODUCTOS = 'Agregación, edición, control y eliminación de productos'
+TÍTULO_LABELFRAME_PRODUCTOS = 'Agregación, edición, control, eliminación y búsqueda de productos'
 ETIQUETA_NOMBRE_TEXTO_PRODUCTOS = "Nombre:"
 ETIQUETA_PRECIO_TEXTO_PRODUCTOS = "Precio: $ "
 ETIQUETA_TOTAL_PRODUCTOS = "Total: $ "
 ETIQUETA_VALOR_TOTAL_PRODUCTOS = '0.00'
 
 # Fuentes
-FUENTE_TÍTULO_PRODUCTOS = ('Times New Roman', 15, 'bold')
-FUENTE_PRECIO_PRODUCTO = ('Times New Roman', 15, 'normal')
-FUENTE_TOTAL_PRODUCTO = ('Times New Roman', 15, 'normal')
+FUENTE_TÍTULO_PRODUCTOS = ('Segoe UI', 15, 'bold')
+FUENTE_PRECIO_PRODUCTO = ('Segoe UI', 15, 'normal')
+FUENTE_TOTAL_PRODUCTO = ('Segoe UI', 15, 'normal')
 ESTILO_PRECIO_ENCONTRADO_VENTA = "precio_encontrado.TLabel"
 
 # Parámetros de layout (Grid)
@@ -39,32 +40,36 @@ STICKY_WIDGET_OESTE_PRODUCTOS = "w"
 
 PADX_ETIQUETA_NOMBRE_PRODUCTOS = 0
 PADY_ETIQUETA_NOMBRE_PRODUCTOS = 0  # Padding específico para la etiqueta nombre
-PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS = (50, 0)
-
+PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS = (80, 0)
 ANCHO_COLUMNA_NOMBRE_PRODUCTOS = 425
+MÁX_CARACTERES_NOMBRE_PRODUCTO = 100
+MENSAJE_LÍMITE_NOMBRE_PRODUCTO = f"El nombre del producto no puede superar los {MÁX_CARACTERES_NOMBRE_PRODUCTO} caracteres."
 
 PADX_ETIQUETA_PRECIO_PRODUCTOS = 0
 PADY_ETIQUETA_PRECIO_PRODUCTOS = 0  # Padding específico para la etiqueta precio
-PADX_ENTRADA_IZQUIERDA_PRECIO_PRODUCTOS = (50, 0)
+PADX_ENTRADA_IZQUIERDA_PRECIO_PRODUCTOS = (80, 0)
+MÁX_DÍGITOS_PRECIO = 10
+MÁX_DECIMALES_PRECIO = 2
 
 PADX_ETIQUETA_STOCK_ACTUAL_PRODUCTOS = 0
 PADY_ETIQUETA_STOCK_ACTUAL_PRODUCTOS = 0  # Padding específico para la etiqueta stock
 
-PADX_ENTRADA_IZQUIERDA_STOCK_ACTUAL_PRODUCTOS = (73, 0)
+PADX_ENTRADA_IZQUIERDA_STOCK_ACTUAL_PRODUCTOS = (110, 0)
 PADY_WIDGETS_GENERAL_PRODUCTOS = 5   # Padding vertical para la mayoría de widgets
 
 ANCHO_ENTRADA_NOMBRE_PRODUCTOS = 40
-ANCHO_ENTRADA_PRECIO_PRODUCTOS = 15
+ANCHO_ENTRADA_PRECIO_PRODUCTOS = 20
 
 ETIQUETA_STOCK_ACTUAL_TEXTO_PRODUCTOS = "Stock actual:"
-ANCHO_ENTRADA_STOCK_ACTUAL_PRODUCTOS = 10 #
-
+ANCHO_ENTRADA_STOCK_ACTUAL_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
+MÁX_STOCK_ACTUAL_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock actual
 ETIQUETA_STOCK_MÍNIMO_TEXTO_PRODUCTOS = "Stock mínimo:"
-ANCHO_ENTRADA_STOCK_MÍNIMO_PRODUCTOS = 10
+ANCHO_ENTRADA_STOCK_MÍNIMO_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
+MÁX_STOCK_MÍNIMO_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock mínimo
 
 PADX_ETIQUETA_STOCK_MÍNIMO_PRODUCTOS = 0
 PADY_ETIQUETA_STOCK_MÍNIMO_PRODUCTOS = 0  # Padding específico para la etiqueta stock mínimo
-PADX_ENTRADA_IZQUIERDA_STOCK_MÍNIMO_PRODUCTOS = (82, 0)
+PADX_ENTRADA_IZQUIERDA_STOCK_MÍNIMO_PRODUCTOS = (120, 0)
 
 ETIQUETA_DESCRIPCIÓN_TEXTO_PRODUCTOS = "Descripción:"
 
@@ -91,7 +96,14 @@ PADX_ETIQUETA_CÓDIGO_PRODUCTOS = 0
 # Reutilizamos el padding izquierdo de "Nombre" para que se alinee
 PADX_ENTRADA_IZQUIERDA_CÓDIGO_PRODUCTOS = PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS
 
-# (Constantes anteriores...)
+# --- Paleta de Colores Moderna ---
+COLOR_FONDO_APP = "#F4F6F9"       # Gris muy suave, moderno
+COLOR_BLANCO = "#FFFFFF"          # Para contenedores y tablas
+COLOR_ACENTO = "#0078D4"          # Azul estilo Windows 11 / VS Code
+COLOR_PRESIONADO = "#005A9E"
+COLOR_TEXTO = "#2C3E50"           # Gris oscuro, más elegante que el negro
+COLOR_TEXTO_SECUNDARIO = "#5F6368"
+COLOR_HOVER_BOTON = "#E0E0E0"
 
 # --- Constantes para Botones de Productos ---
 TEXTO_BOTÓN_AÑADIR_PRODUCTOS = "Añadir"
@@ -101,18 +113,15 @@ TEXTO_BOTÓN_LIMPIAR_PRODUCTOS = "Limpiar"
 TEXTO_BOTÓN_BUSCAR_PRODUCTOS = "Buscar"
 TEXTO_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = "Todo"
 
-# Padding (horizontal) para los botones en la fila 6.
-# Ajusta estos valores numéricos (85, 170, 255)
-# para que coincidan con el espaciado que deseas.
 PADX_BOTÓN_AÑADIR_PRODUCTOS = (0, 0)
-PADX_BOTÓN_EDITAR_PRODUCTOS = (85, 0)
-PADX_BOTÓN_ELIMINAR_PRODUCTOS = (170, 0)
-PADX_BOTÓN_LIMPIAR_PRODUCTOS = (255, 0)
+PADX_BOTÓN_EDITAR_PRODUCTOS = (100, 0)
+PADX_BOTÓN_ELIMINAR_PRODUCTOS = (200, 0)
+PADX_BOTÓN_LIMPIAR_PRODUCTOS = (300, 0)
 PADX_BOTÓN_BUSCAR_PRODUCTOS = (10, 0)
-PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = (95, 0)
+PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = (110, 0)
 
 COLUMNA_TOTAL_PRODUCTOS=2
-FILA_TOTAL_PRODUCTO = 3
+FILA_TOTAL_PRODUCTO = 4
 PADX_TOTAL_PRODUCTO = 0
 PADY_TOTAL_PRODUCTO = 0
 STICKY_TOTAL_PRODUCTO = 'en'
@@ -130,11 +139,14 @@ BOTÓN_LIMPIAR_VENTA = "Limpiar"
 BOTÓN_VACIAR_CARRITO_VENTA = "Vaciar carrito"
 ETIQUETA_PRECIO_VENTA = ""
 ANCHO_ENTRADA_CÓDIGO_VENTA = 20
+MÁX_CARACTERES_CÓDIGO_PRODUCTO = 5
+MENSAJE_LÍMITE_CÓDIGO_PRODUCTO = f"El código no puede tener más de {MÁX_CARACTERES_CÓDIGO_PRODUCTO} caracteres."
 BOTÓN_FINALIZAR_VENTA = 'Finalizar venta'
 BOTÓN_ELIMINAR_VENTA_VENTA = "Eliminar venta"
 COLUMNA_BOTÓN_FINALIZAR_VENTA = 6
 FILA_BOTÓN_FINALIZAR_VENTA = 1
-ANCHO_ENTRADA_CANTIDAD_VENTA = 20
+ANCHO_ENTRADA_CANTIDAD_VENTA = 11
+MÁX_CANTIDAD_VENTA = 4294967295  # Define el valor máximo permitido para la cantidad en venta
 PADX_GENERAL_VENTA = 5
 PADY_GENERAL_VENTA = 5
 STICKY_WIDGET_OESTE_VENTA = "w"
@@ -175,6 +187,13 @@ class Aplicación(tk.Tk):
 
             self.datos = []  # Lista para almacenar los datos que se mostrarán en la tabla.
 
+            self.estado_orden = {
+                'productos': (None, False),      # (Columna, Descendente?)
+                'ventas': ('fecha_hora', True),  # Por defecto: Fecha descendente
+                'stock': (None, False),
+                'carrito': (None, False)
+            }
+
         # --- Inicialización de variables y objetos ---
             self.base_de_datos = base_de_datos.BaseDeDatos()  # Crea una instancia de la clase BaseDeDatos.
             self.datos = self.base_de_datos.consultarDatosProductos()  # Lista para almacenar los datos que se mostrarán en la tabla.
@@ -207,11 +226,61 @@ class Aplicación(tk.Tk):
             self.grid_rowconfigure(0, weight=1)
             self.grid_columnconfigure(0, weight=1)
 
-             # --- Configuración de estilos ---
+            self.configure(bg=COLOR_FONDO_APP) # Fondo de la ventana principal
+            self.estilo_apariencia = ttk.Style()
+            self.estilo_apariencia.theme_use('clam') # 'clam' permite cambiar colores de fondo más fácilmente que 'vista'
+            # Configurar fondo general para Frames y Labels
+            self.estilo_apariencia.configure(".", background=COLOR_FONDO_APP, foreground=COLOR_TEXTO)
+            self.estilo_apariencia.configure("TFrame", background=COLOR_FONDO_APP)
+            self.estilo_apariencia.configure("TLabel", background=COLOR_FONDO_APP, font=('Segoe UI', 11))
+            self.estilo_apariencia.configure("TLabelframe", background=COLOR_FONDO_APP)
+            self.estilo_apariencia.configure("TLabelframe.Label", background=COLOR_FONDO_APP, foreground=COLOR_ACENTO, font=('Segoe UI', 12, 'bold'))
+
+            # --- Configuración de estilos ---
+            self.estilo_apariencia = ttk.Style()
+            self.estilo_apariencia.configure("TLabel", font=('Segoe UI', 11))
             self.estilo_apariencia = ttk.Style()  # Crea un objeto de estilo para personalizar la apariencia.
             self.estilo_apariencia.configure("rojo.TLabel", foreground="red")  # Estilo para texto rojo.
             self.estilo_apariencia.configure("verde.TLabel", foreground="#37C11E")  # Estilo para texto verde.
             self.estilo_apariencia.configure("negro.TLabel", foreground="black")  # Estilo para texto negro.
+            self.estilo_apariencia.configure("Treeview", rowheight=25)
+            self.estilo_apariencia.configure("Treeview.Heading", font=('Segoe UI', 9, 'bold'))
+            self.estilo_apariencia.configure("TButton", 
+                                font=('Segoe UI', 10, 'bold'),
+                                background=COLOR_BLANCO, 
+                                foreground=COLOR_TEXTO,
+                                borderwidth=1,
+                                focusthickness=3,
+                                focuscolor=COLOR_ACENTO,
+                                padding=6)
+
+            self.estilo_apariencia.map('TButton',
+                background=[('pressed', COLOR_PRESIONADO), ('active', COLOR_ACENTO), ('disabled', '#D9D9D9')],
+                foreground=[('pressed', 'white'), ('active', 'white'), ('disabled', '#A0A0A0')]
+            )
+
+            # Estilo Moderno para la Tabla
+            self.estilo_apariencia.configure("Treeview", 
+                                            background=COLOR_BLANCO,
+                                            fieldbackground=COLOR_FONDO_APP, # Fondo vacío igual a la app
+                                            foreground=COLOR_TEXTO,
+                                            font=('Segoe UI', 10), # Fuente moderna en las filas
+                                            borderwidth=0,
+                                            rowheight=30)
+
+            # Estilo Moderno para Encabezados (Header)
+            # Usamos un gris azulado suave que combina con tu fondo #F4F6F9
+            self.estilo_apariencia.configure("Treeview.Heading", 
+                                            background="#E1E5EA", 
+                                            foreground=COLOR_TEXTO,
+                                            font=('Segoe UI', 10, 'bold'),
+                                            relief="flat") # Elimina bordes 3D antiguos
+                                            
+            # Color de selección (Tu azul de acento)
+            self.estilo_apariencia.map('Treeview', 
+                background=[('selected', COLOR_ACENTO)],
+                foreground=[('selected', 'white')]
+            )
 
             # Estilo para "$1100.50" (encontrado)
             self.estilo_apariencia.configure(ESTILO_PRECIO_ENCONTRADO_VENTA, 
@@ -268,32 +337,41 @@ class Aplicación(tk.Tk):
             
             # Configura la función que se ejecutará cuando se cierre la ventana.
             self.protocol("WM_DELETE_WINDOW", self.cerrarVentana)
-            self.cuaderno.bind("<<NotebookTabChanged>>", self.al_cambiar_pestaña)
+            self.cuaderno.bind("<<NotebookTabChanged>>", self.alCambiarPestaña)
             # Carga los datos en la tabla productos (en un hilo separado).
             self.cargarDatosEnTablaEnHilo()
 
         except Exception as e:
-            messagebox.showerror("Error crítico", f"Fallo en inicialización: {str(e)}")
+            MensajeModerno(self, "Error crítico", f"Fallo en inicialización: {str(e)}", tipo="error")
             sys.exit(1)
     
-    def al_cambiar_pestaña(self, event):
+    def alCambiarPestaña(self, event):
         """
         Detecta cuando el usuario cambia de pestaña.
         Si la pestaña seleccionada es "Ventas", pone el foco en la entrada de código.
         """
         try:
+            # Verificar si la ventana principal aún existe
+            if not self.winfo_exists():
+                return
+
             # Obtener el índice de la pestaña actual
             pestaña_actual = self.cuaderno.index("current")
             
+            def poner_foco_seguro(widget):
+                # Verificar si el widget específico aún existe antes de enfocar
+                if widget.winfo_exists():
+                    widget.focus()
+
             # Verificar si es la pestaña de Ventas
             if pestaña_actual == self.índice_ventas:
-                # Usamos after_idle para asegurar que la pestaña se haya 
-                # dibujado completamente antes de intentar poner el foco.
-                self.entrada_código_venta.after_idle(self.entrada_código_venta.focus)
+                # Usamos after_idle con la función segura
+                self.after_idle(lambda: poner_foco_seguro(self.entrada_código_producto_venta))
             else:
-                self.entrada_código.after_idle(self.entrada_código.focus)
-        except Exception:
-            pass # Evitar errores si se cierra la app mientras se cambia
+                self.after_idle(lambda: poner_foco_seguro(self.entrada_código))
+                
+        except (tk.TclError, Exception):
+            pass # Ignorar errores si la app se está cerrando
 
     def crearTablaConProductos(self):
 
@@ -328,6 +406,10 @@ class Aplicación(tk.Tk):
         self.tabla_productos.heading('stock_actual', text='Stock actual')
         self.tabla_productos.heading('stock_mínimo', text='Stock mínimo')
         self.tabla_productos.heading('descripción', text='Descripción', anchor='w')
+
+        # Habilitar ordenamiento por clic en columnas
+        for col in columnas:
+            self.tabla_productos.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_productos, c, False, 'productos'))
 
         self.tabla_productos.grid(
             row=1,
@@ -481,7 +563,7 @@ class Aplicación(tk.Tk):
         
         # 2. Verificar la selección
         if not ítems_seleccionados:
-            messagebox.showwarning("Atención", "Debe seleccionar una fila del carrito para poder quitarla.")
+            MensajeModerno(self,"Atención", "Debe seleccionar una fila del carrito para poder quitarla.", tipo="advertencia")
             return
 
         # 3. Procesar el ítem seleccionado (solo tomamos el primero)
@@ -537,11 +619,15 @@ class Aplicación(tk.Tk):
         self.tabla_ventas.heading('fecha_hora', text='Fecha y hora', anchor='center')
         self.tabla_ventas.heading('total', text='Total', anchor='center')
 
+        # Habilitar ordenamiento por clic en columnas
+        for col in columnas_ventas:
+            self.tabla_ventas.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_ventas, c, False, 'ventas'))
+
         # --- 4. Posicionar la Tabla (Fila 1, Col 0) ---
         self.tabla_ventas.grid(
             row=1,
             column=0,
-            rowspan=3,
+            rowspan=2,
             sticky='nsw' # Se expande verticalmente (ns) y se pega a la izquierda (w)
         )
 
@@ -566,8 +652,8 @@ class Aplicación(tk.Tk):
         self.tabla_ventas.configure(yscrollcommand=self.barra_desplazamiento_vertical_ventas.set)
 
         # --- 7. Posicionar scrollbars ---
-        self.barra_desplazamiento_vertical_ventas.grid(row=1, column=1, rowspan=3, sticky='wns')
-        self.barra_desplazamiento_horizontal_ventas.grid(row=4, column=0, sticky='we')
+        self.barra_desplazamiento_vertical_ventas.grid(row=1, column=1, rowspan=2, sticky='ns')
+        self.barra_desplazamiento_horizontal_ventas.grid(row=3, column=0, sticky='nwe')
         self.tabla_ventas.bind("<<TreeviewSelect>>", self.cargarDetalleVentaEnCarrito)
 
     def crearLabelFrameProductos(self):
@@ -590,13 +676,22 @@ class Aplicación(tk.Tk):
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         self.código = tk.StringVar()
-        self.entrada_código = tk.Entry(self.labelframe_productos, 
+        self.entrada_código = ttk.Entry(self.labelframe_productos, 
                                     width=ANCHO_ENTRADA_CÓDIGO_PRODUCTOS, 
                                     textvariable=self.código)
         self.entrada_código.grid(column=0, row=0, 
                                 padx=PADX_ENTRADA_IZQUIERDA_CÓDIGO_PRODUCTOS, 
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        self.entrada_código.bind(EVENTO_TECLA_PRESIONADA, 
+            lambda event: self.limitar_longitud_entrada(
+                event, 
+                self.entrada_código, 
+                self.código, 
+                MÁX_CARACTERES_CÓDIGO_PRODUCTO, 
+                MENSAJE_LÍMITE_CÓDIGO_PRODUCTO
+            )
+        )
 
         # --- Nombre ---
         self.etiqueta_nombre = ttk.Label(self.labelframe_productos, text=ETIQUETA_NOMBRE_TEXTO_PRODUCTOS)
@@ -605,13 +700,22 @@ class Aplicación(tk.Tk):
                                 pady=PADY_ETIQUETA_NOMBRE_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         self.nombre = tk.StringVar()
-        self.entrada_nombre = tk.Entry(self.labelframe_productos, 
+        self.entrada_nombre = ttk.Entry(self.labelframe_productos, 
                                     width=ANCHO_ENTRADA_NOMBRE_PRODUCTOS, 
                                     textvariable=self.nombre)
         self.entrada_nombre.grid(column=0, row=1, 
                                 padx=PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS, 
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        self.entrada_nombre.bind(EVENTO_TECLA_PRESIONADA, 
+            lambda event: self.limitar_longitud_entrada(
+                event, 
+                self.entrada_nombre, 
+                self.nombre, 
+                MÁX_CARACTERES_NOMBRE_PRODUCTO,  # Límite máximo
+                MENSAJE_LÍMITE_NOMBRE_PRODUCTO # Mensaje
+            )
+        )
 
         # --- Precio ---
         self.etiqueta_precio = ttk.Label(self.labelframe_productos, text=ETIQUETA_PRECIO_TEXTO_PRODUCTOS)
@@ -620,7 +724,7 @@ class Aplicación(tk.Tk):
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         self.precio = tk.StringVar()
-        self.entrada_precio = tk.Entry(self.labelframe_productos, 
+        self.entrada_precio = ttk.Entry(self.labelframe_productos, 
                                     width=ANCHO_ENTRADA_PRECIO_PRODUCTOS, 
                                     textvariable=self.precio)
         self.entrada_precio.grid(column=0, row=2, 
@@ -630,8 +734,12 @@ class Aplicación(tk.Tk):
 
         # Bindeo con la constante de evento
         self.entrada_precio.bind(EVENTO_TECLA_PRESIONADA, 
-                                lambda event: funciones_útiles.controlar_caracteres_precio(self.precio, self.entrada_precio, event))  # Validación de entrada
-
+                                lambda event: funciones_útiles.controlar_caracteres_precio(
+                                    self.precio, 
+                                    self.entrada_precio, 
+                                    máx_dígitos=MÁX_DÍGITOS_PRECIO, 
+                                    máx_decimales=MÁX_DECIMALES_PRECIO, 
+                                    event=event))
         # --- Stock Actual ---
         self.etiqueta_stock = ttk.Label(self.labelframe_productos, text=ETIQUETA_STOCK_ACTUAL_TEXTO_PRODUCTOS)
         self.etiqueta_stock.grid(column=0, row=3,
@@ -639,17 +747,16 @@ class Aplicación(tk.Tk):
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         self.stock = tk.StringVar()
-        self.entrada_stock = tk.Entry(self.labelframe_productos, 
+        self.entrada_stock = ttk.Entry(self.labelframe_productos, 
                                     width=ANCHO_ENTRADA_STOCK_ACTUAL_PRODUCTOS, 
                                     textvariable=self.stock)
         self.entrada_stock.grid(column=0, row=3,
                                 padx=PADX_ENTRADA_IZQUIERDA_STOCK_ACTUAL_PRODUCTOS, 
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
-
         self.entrada_stock.bind(EVENTO_TECLA_PRESIONADA, 
                                 lambda event, widget=self.entrada_stock, var=self.stock: 
-                                self.controlar_caracteres_solo_enteros(event, widget, var))
+                                self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_STOCK_ACTUAL_PRODUCTO))
 
         # --- Stock Mínimo ---
         self.etiqueta_stock_mínimo = ttk.Label(self.labelframe_productos, text=ETIQUETA_STOCK_MÍNIMO_TEXTO_PRODUCTOS)
@@ -658,7 +765,7 @@ class Aplicación(tk.Tk):
                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         self.stock_mínimo = tk.StringVar()
-        self.entrada_stock_mínimo = tk.Entry(self.labelframe_productos, 
+        self.entrada_stock_mínimo = ttk.Entry(self.labelframe_productos, 
                                             width=ANCHO_ENTRADA_STOCK_MÍNIMO_PRODUCTOS, 
                                             textvariable=self.stock_mínimo)
         self.entrada_stock_mínimo.grid(column=0, row=4,
@@ -668,7 +775,7 @@ class Aplicación(tk.Tk):
         
         self.entrada_stock_mínimo.bind(EVENTO_TECLA_PRESIONADA, 
                                        lambda event, widget=self.entrada_stock_mínimo, var=self.stock_mínimo: 
-                                       self.controlar_caracteres_solo_enteros(event, widget, var))
+                                       self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_STOCK_MÍNIMO_PRODUCTO))
 
         # --- Descripción (en Columna 1) ---
         self.etiqueta_descripción = ttk.Label(self.labelframe_productos, 
@@ -682,7 +789,15 @@ class Aplicación(tk.Tk):
         self.texto_desplazado = st.ScrolledText(self.labelframe_productos, 
                                                 width=ANCHO_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
                                                 height=ALTO_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
-                                                wrap=WRAP_TEXTO_DESCRIPCIÓN_PRODUCTOS)
+                                                wrap=WRAP_TEXTO_DESCRIPCIÓN_PRODUCTOS,
+                                                font=('Segoe UI', 10),          # Fuente moderna
+                                                relief="solid",                 # Borde plano (sin efecto 3D)
+                                                borderwidth=1,                  # Borde fino y elegante
+                                                padx=10, pady=10,               # "Aire" interno para que el texto no toque los bordes
+                                                bg=COLOR_BLANCO,                # Fondo blanco limpio
+                                                fg=COLOR_TEXTO,                 # Color de texto gris oscuro
+                                                selectbackground=COLOR_ACENTO,  # Color de selección azul (tu color de acento)
+                                                selectforeground="white")       # Texto blanco al seleccionar
 
         # Texto en Col 1, Fila 2, y se expande 3 filas (para alinear con Precio, Stock y Stock Mínimo)
         self.texto_desplazado.grid(column=1, row=1, 
@@ -788,8 +903,8 @@ class Aplicación(tk.Tk):
                                                         labelwidget=self.etiqueta_título_venta)
         
         # 3. Posicionar el LabelFrame
-        # Se ubica en la Col 2, y abarca las filas 0 y 1
-        self.labelframe_venta_producto.grid(column=2, row=3, rowspan=1, 
+        self.labelframe_venta_producto.grid(column=0, row=5, rowspan=1,
+                                            columnspan=3,
                                             padx=PADX_GENERAL_VENTA, 
                                             pady=PADY_GENERAL_VENTA,
                                             sticky="wn") # Se pega arriba, no se expande
@@ -797,23 +912,31 @@ class Aplicación(tk.Tk):
         # --- Fila 0 (Interior) ---
         
         # Etiqueta "Código producto"
-        self.etiqueta_código_venta = ttk.Label(self.labelframe_venta_producto, 
+        self.etiqueta_código_producto_venta = ttk.Label(self.labelframe_venta_producto, 
                                                text=ETIQUETA_CÓDIGO_PRODUCTO_VENTA)
-        self.etiqueta_código_venta.grid(column=0, row=0, 
+        self.etiqueta_código_producto_venta.grid(column=0, row=0, 
                                       padx=PADX_GENERAL_VENTA, 
                                       pady=PADY_GENERAL_VENTA, 
                                       sticky=STICKY_WIDGET_OESTE_VENTA)
         
         # Caja de texto (Código)
         self.código_venta = tk.StringVar()
-        self.entrada_código_venta = tk.Entry(self.labelframe_venta_producto, 
+        self.entrada_código_producto_venta = ttk.Entry(self.labelframe_venta_producto, 
                                             width=ANCHO_ENTRADA_CÓDIGO_VENTA, 
                                             textvariable=self.código_venta)
-        self.entrada_código_venta.grid(column=1, row=0, 
+        self.entrada_código_producto_venta.grid(column=1, row=0, 
                                       padx=PADX_GENERAL_VENTA, 
                                       pady=PADY_GENERAL_VENTA, 
                                       sticky=STICKY_WIDGET_OESTE_VENTA)
-
+        self.entrada_código_producto_venta.bind(EVENTO_TECLA_PRESIONADA, 
+            lambda event: self.limitar_longitud_entrada(
+                event, 
+                self.entrada_código_producto_venta, 
+                self.código_venta, 
+                MÁX_CARACTERES_CÓDIGO_PRODUCTO, 
+                MENSAJE_LÍMITE_CÓDIGO_PRODUCTO
+            )
+        )
         # Botón "Ver precio"
         self.botón_ver_precio = ttk.Button(self.labelframe_venta_producto, 
                                            text=BOTÓN_VER_PRECIO_VENTA,
@@ -835,7 +958,7 @@ class Aplicación(tk.Tk):
         
         # Caja de texto (Cantidad)
         self.cantidad_venta = tk.StringVar()
-        self.entrada_cantidad_venta = tk.Entry(self.labelframe_venta_producto, 
+        self.entrada_cantidad_venta = ttk.Entry(self.labelframe_venta_producto, 
                                               width=ANCHO_ENTRADA_CANTIDAD_VENTA, 
                                               textvariable=self.cantidad_venta)
         self.entrada_cantidad_venta.grid(column=3, row=0, 
@@ -848,7 +971,7 @@ class Aplicación(tk.Tk):
         # Bindeo con la constante de evento
         self.entrada_cantidad_venta.bind(EVENTO_TECLA_PRESIONADA, 
                                        lambda event, widget=self.entrada_cantidad_venta, var=self.cantidad_venta: 
-                                       self.controlar_caracteres_solo_enteros(event, widget, var))  # Validación de entrada
+                                       self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_CANTIDAD_VENTA))  # Validación de entrada
 
         # Etiqueta "Precio" (ahora dinámica)
         
@@ -933,9 +1056,10 @@ class Aplicación(tk.Tk):
             return
         
         # 2. Preguntar al usuario (solo si no está vacío)
-        respuesta = messagebox.askyesno("Vaciar Carrito", 
+        confirmación = MensajeModerno(self, "Vaciar Carrito", 
                                         "¿Está seguro de que desea vaciar el carrito?\n"
-                                        "Se eliminarán todos los ítems.")
+                                        "Se eliminarán todos los ítems.", tipo="pregunta")
+        respuesta = confirmación.resultado
         
         if respuesta: # Si el usuario dijo "Sí"
             # 3. Vaciar la tabla
@@ -969,8 +1093,9 @@ class Aplicación(tk.Tk):
 
         # 2. Advertir al usuario si el carrito actual NO está vacío
         if self.tabla_carrito.get_children(): # Si hay items en el carrito
-            respuesta = messagebox.askyesno("Sobrescribir Carrito",
-                                            "¿Desea vaciar el carrito actual y cargar los detalles de la venta seleccionada?")
+            confirmación = MensajeModerno(self, "Sobrescribir Carrito",
+                                            "¿Desea vaciar el carrito actual y cargar los detalles de la venta seleccionada?", tipo="pregunta")
+            respuesta = confirmación.resultado
             if not respuesta:
                 self.tabla_ventas.selection_set(()) # Deseleccionar la fila
                 return # El usuario presionó "No"
@@ -984,16 +1109,20 @@ class Aplicación(tk.Tk):
             detalles = self.base_de_datos.consultarDetalleVenta(id_venta_seleccionada)
 
             if detalles is None:
-                messagebox.showerror("Error de BD", "No se pudieron consultar los detalles de la venta.")
+                MensajeModerno(self, "Error de BD", "No se pudieron consultar los detalles de la venta.", tipo="error")
                 self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
                 return
 
             total_recuperado = 0.0
 
+            self.tabla_carrito.tag_configure('impar', background=COLOR_BLANCO)
+            self.tabla_carrito.tag_configure('par', background=COLOR_FONDO_APP)
+
             # 5. Cargar los detalles en la tabla del carrito
-            for item in detalles:
-                self.tabla_carrito.insert('', tk.END, values=item)
-                # Acumular el total (el subtotal está en el índice 4)
+            for i, item in enumerate(detalles):
+                tag_fila = 'par' if i % 2 == 0 else 'impar'
+                self.tabla_carrito.insert('', tk.END, values=item, tags=(tag_fila,))
+                
                 total_recuperado += float(item[4])
 
             # 6. Actualizar la etiqueta del total
@@ -1003,7 +1132,7 @@ class Aplicación(tk.Tk):
             self.botón_eliminar_venta.config(state='normal')
 
         except Exception as e:
-            messagebox.showerror("Error", f"Ocurrió un error al cargar los detalles: {str(e)}")
+            MensajeModerno(self, "Error", f"Ocurrió un error al cargar los detalles: {str(e)}", tipo="error")
             self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
 
     def finalizarVenta(self):
@@ -1022,13 +1151,14 @@ class Aplicación(tk.Tk):
 
         # Condición 1: Carrito vacío
         if not items_carrito_ids:
-            messagebox.showwarning("Carrito vacío", "No hay productos en el carrito para finalizar la venta.")
+            MensajeModerno(self,"Carrito vacío", "No hay productos en el carrito para finalizar la venta.", tipo="advertencia")
             return
 
         # Confirmar la venta con el total
         total_venta_str = self.etiqueta_valor_total_produdcto.cget('text')
-        respuesta = messagebox.askyesno("Confirmar Venta", 
-                                        f"¿Desea finalizar la venta por un total de $ {total_venta_str}?")
+        confirmación = MensajeModerno(self, "Confirmar Venta", 
+                                        f"¿Desea finalizar la venta por un total de $ {total_venta_str}?", tipo="pregunta")
+        respuesta = confirmación.resultado
         if not respuesta:
             return
 
@@ -1044,7 +1174,7 @@ class Aplicación(tk.Tk):
             id_venta_generado = self.base_de_datos.registrarVenta([fecha_actual])
 
             if id_venta_generado is None:
-                messagebox.showerror("Error", "No se pudo registrar la venta principal.")
+                MensajeModerno(self, "Error", "No se pudo registrar la venta principal.", tipo="error")
                 return
 
             # 4. Registrar los DETALLES y actualizar STOCK (Loop)
@@ -1078,14 +1208,14 @@ class Aplicación(tk.Tk):
             # 8. Respaldar la base de datos
             funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
 
-            messagebox.showinfo("Éxito", f"Venta ID: {id_venta_generado} registrada correctamente.")
+            MensajeModerno(self, "Éxito", f"Venta ID: {id_venta_generado} registrada correctamente.", tipo="info")
 
         except ValueError as ve:
             # Captura errores de "Stock insuficiente" o "Código duplicado en carrito"
-            messagebox.showerror("Error en Venta", str(ve))
+            MensajeModerno(self, "Error en Venta", str(ve), tipo="error")
         except Exception as e:
             # Captura cualquier otro error de BD
-            messagebox.showerror("Error Crítico", f"Ocurrió un error al procesar la venta: {str(e)}")
+            MensajeModerno(self, "Error Crítico", f"Ocurrió un error al procesar la venta: {str(e)}", tipo="error")
 
     def actualizarTablaVentas(self):
         """
@@ -1095,6 +1225,9 @@ class Aplicación(tk.Tk):
         
         try:
             
+            self.tabla_ventas.tag_configure('impar', background=COLOR_BLANCO)
+            self.tabla_ventas.tag_configure('par', background=COLOR_FONDO_APP)
+
             # 1. Consultar los datos frescos
             lista_ventas = self.base_de_datos.consultarVentasConTotal()
 
@@ -1103,17 +1236,23 @@ class Aplicación(tk.Tk):
             
             # 3. Cargar datos en la tabla
             if lista_ventas:
-                for venta in lista_ventas:
+                for i, venta in enumerate(lista_ventas):
                     # Formatear la fecha/hora
                     id_v = venta[0]
                     fecha_hora_dt = venta[1] # Es un objeto datetime
                     fecha_hora_str = fecha_hora_dt.strftime(funciones_útiles.FORMATO_PREFERIDO_HORA_Y_FECHA)
                     total = f"{venta[2]:.2f}"
                     
-                    self.tabla_ventas.insert('', tk.END, values=(id_v, fecha_hora_str, total))
+                    # Calcular par/impar
+                    tag_fila = 'par' if i % 2 == 0 else 'impar'
+                    
+                    # Insertar CON tags
+                    self.tabla_ventas.insert('', tk.END, values=(id_v, fecha_hora_str, total), tags=(tag_fila,))
+            
+            self.aplicarOrdenGuardado(self.tabla_ventas, 'ventas')
                     
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudieron cargar las ventas: {str(e)}")
+            MensajeModerno(self, "Error", f"No se pudieron cargar las ventas: {str(e)}", tipo="error")
             
     def agregarAlCarrito(self):
         """
@@ -1140,13 +1279,13 @@ class Aplicación(tk.Tk):
         try:
             producto_encontrado = self.base_de_datos.buscarProductoPorCódigo(código)
         except Exception as e:
-            messagebox.showerror("Error de BD", f"Error al buscar el producto por código: {str(e)}")
+            MensajeModerno(self, "Error de BD", f"Error al buscar el producto por código: {str(e)}", tipo="error")
             return
 
         # 3. Producto no encontrado
         if not producto_encontrado:
-            messagebox.showinfo("No encontrado", "No existe un producto con ese código.")
-            self.entrada_código_venta.focus()
+            MensajeModerno(self, "No encontrado", "No existe un producto con ese código.", tipo="info")
+            self.entrada_código_producto_venta.focus()
             return
 
         # 4. PROCESAR Y VERIFICAR STOCK
@@ -1171,12 +1310,13 @@ class Aplicación(tk.Tk):
 
         # 7. ¡La Validación de Stock!
         if stock_necesario > stock_disponible:
-            messagebox.showwarning("Stock Insuficiente", 
+            MensajeModerno(self,"Stock Insuficiente", 
                                  f"No hay stock suficiente para '{nombre}'.\n\n"
                                  f"Stock disponible: {stock_disponible}\n"
                                  f"Cantidad ya en carrito: {cantidad_en_carrito}\n"
                                  f"Cantidad deseada: {cantidad_deseada}\n\n"
-                                 f"Total necesario: {stock_necesario}")
+                                 f"Total necesario: {stock_necesario}",
+                                 tipo="advertencia")
             self.entrada_cantidad_venta.focus()
             return # Detener la función
 
@@ -1198,12 +1338,20 @@ class Aplicación(tk.Tk):
             f"{nuevo_subtotal_item_fila:.2f}" # Usar el *total* subtotal para la fila
         )
 
+        # Calcular si la nueva fila será par o impar basándonos en cuántas hay
+        numero_filas_actuales = len(self.tabla_carrito.get_children())
+        tag_fila = 'par' if numero_filas_actuales % 2 == 0 else 'impar'
+
+        # Configurar estilos (solo necesitas hacerlo una vez, pero aquí asegura que existan)
+        self.tabla_carrito.tag_configure('impar', background=COLOR_BLANCO)
+        self.tabla_carrito.tag_configure('par', background=COLOR_FONDO_APP)
+        
         if item_id_en_carrito:
             # ACTUALIZAR la fila existente
             self.tabla_carrito.item(item_id_en_carrito, values=valores_fila)
         else:
             # INSERTAR una nueva fila
-            self.tabla_carrito.insert('', tk.END, values=valores_fila)
+            self.tabla_carrito.insert('', tk.END, values=valores_fila, tags=(tag_fila,))
 
         # 9. Actualizar el Valor total de la venta
         # Sumamos solo el subtotal de la cantidad *nueva* que se agregó
@@ -1232,14 +1380,14 @@ class Aplicación(tk.Tk):
 
         # 1. Verificar el Código
         if código == '':
-            messagebox.showwarning('Atención', 'Debe ingresar un código de producto.')
-            self.entrada_código_venta.focus()
+            MensajeModerno(self,'Atención', 'Debe ingresar un código de producto.', tipo="advertencia")
+            self.entrada_código_producto_venta.focus()
             producto_válido = False
 
         # 2. Verificar la Cantidad
         # Solo verificamos si el código fue válido para no mostrar dos advertencias a la vez
         if producto_válido and cantidad == '':
-            messagebox.showwarning('Atención', 'Debe ingresar la cantidad a vender.')
+            MensajeModerno(self,'Atención', 'Debe ingresar la cantidad a vender.', tipo="advertencia")
             self.entrada_cantidad_venta.focus()
             producto_válido = False
             
@@ -1258,7 +1406,7 @@ class Aplicación(tk.Tk):
         self.precio_venta_var.set(ETIQUETA_PRECIO_VENTA)
         
         # 3. Pone el foco (cursor) de nuevo en la entrada de código
-        self.entrada_código_venta.focus()
+        self.entrada_código_producto_venta.focus()
 
         # 4. Deseleccionar la fila de la tabla ventas
         self.tabla_carrito.selection_set(())
@@ -1311,7 +1459,7 @@ class Aplicación(tk.Tk):
             self.datos = lista_resultados
             self.cargarTablaProducto() # Llama a la función que SÍ usa self.datos
         else:
-            messagebox.showinfo('No encontrado', 'No se encontró ningún producto con esos datos.')
+            MensajeModerno(self, 'No encontrado', 'No se encontró ningún producto con esos datos.', tipo="info")
 
     def añadirProducto(self):
         """
@@ -1353,17 +1501,17 @@ class Aplicación(tk.Tk):
                 # 7. Respalda la base de datos (como en tus otras funciones)
                 funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
                 
-                messagebox.showinfo("Éxito", "Producto añadido correctamente.")
+                MensajeModerno(self, "Éxito", "Producto añadido correctamente.", tipo="info")
 
             # --- NUEVO BLOQUE "except" ---
             except ValueError as ve:
                 # Captura el error de "Código duplicado" que lanzamos desde la BD
-                messagebox.showerror("Error de Duplicado", str(ve))
+                MensajeModerno(self, "Error de Duplicado", str(ve), tipo="error")
                 self.entrada_código.focus() # Pone el foco en el campo incorrecto
 
             except Exception as e: # Captura todos los demás errores
-                messagebox.showerror("Error de Base de Datos", 
-                                     f"No se pudo añadir el producto: {str(e)}")
+                MensajeModerno(self, "Error de Base de Datos", 
+                              f"No se pudo añadir el producto: {str(e)}", tipo="error")
 
     def esUnProductoVálido(self):
         producto_válido = True  # Asume inicialmente que los datos son válidos
@@ -1376,31 +1524,31 @@ class Aplicación(tk.Tk):
 
         # 1. Verifica que se haya ingresado un código
         if código == '':
-            messagebox.showwarning('¡Atención!', 'Debe ingresar un código para el producto.')
+            MensajeModerno(self,'¡Atención!', 'Debe ingresar un código para el producto.', tipo="advertencia")
             self.entrada_código.focus()
             producto_válido = False
 
         # 2. Verifica que se haya ingresado un nombre (solo si lo anterior es válido)
         if nombre == '':
-            messagebox.showwarning('¡Atención!', 'Debe ingresar un nombre para el producto.')
+            MensajeModerno(self,'¡Atención!', 'Debe ingresar un nombre para el producto.', tipo="advertencia")
             self.entrada_nombre.focus()
             producto_válido = False
 
         # 3. Verifica que se haya ingresado un precio (solo si lo anterior es válido)
         if precio_str == '':
-            messagebox.showwarning('¡Atención!', 'Debe ingresar un precio para el producto.')
+            MensajeModerno(self,'¡Atención!', 'Debe ingresar un precio para el producto.', tipo="advertencia")
             self.entrada_precio.focus()
             producto_válido = False
 
         # 4. Verifica que se haya ingresado un stock actual (solo si lo anterior es válido)
         if stock_str == '':
-            messagebox.showwarning('¡Atención!', 'Debe ingresar el stock actual.')
+            MensajeModerno(self,'¡Atención!', 'Debe ingresar el stock actual.', tipo="advertencia")
             self.entrada_stock.focus()
             producto_válido = False
 
         # 5. Verifica que se haya ingresado un stock mínimo (solo si lo anterior es válido)
         if stock_min_str == '':
-            messagebox.showwarning('¡Atención!', 'Debe ingresar el stock mínimo.')
+            MensajeModerno(self,'¡Atención!', 'Debe ingresar el stock mínimo.', tipo="advertencia")
             self.entrada_stock_mínimo.focus()
             producto_válido = False
 
@@ -1453,6 +1601,10 @@ class Aplicación(tk.Tk):
         self.tabla_carrito.heading('cantidad', text='Cantidad', anchor='center')
         self.tabla_carrito.heading('subtotal', text='Subtotal', anchor='center')
 
+        # Habilitar ordenamiento por clic en columnas
+        for col in columnas_carrito:
+            self.tabla_carrito.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_carrito, c, False))
+
         # --- 3. Posicionar la Tabla (Fila 1, Col 2, Colspan 2) ---
         self.tabla_carrito.grid(
             row=1, # Fila 1
@@ -1490,42 +1642,48 @@ class Aplicación(tk.Tk):
 
     def actualizarTablaStockAlerta(self):
         """
-        Limpia la tabla de stock en alerta y la recarga con productos
-        cuyo stock actual es menor o igual al stock mínimo.
+        Limpia la tabla de stock en alerta y la recarga con productos...
         """
-        # 1. Limpiar tabla de alertas
         funciones_útiles.borrarTodasLasFilas(self.tabla_stock_alerta)
         
-        # 2. Si self.datos (de la carga principal) está vacío, no hacer nada
+        # --- Configurar tags modernos ---
+        self.tabla_stock_alerta.tag_configure('impar', background=COLOR_BLANCO)
+        self.tabla_stock_alerta.tag_configure('par', background=COLOR_FONDO_APP)
+        self.tabla_stock_alerta.tag_configure('alerta', foreground='red', background='#FFF0F0') # Rojo suave de fondo para alertas
+        
         if not self.datos:
             return
 
-        
         stock_en_alerta = self.base_de_datos.consultarProductosPorPorcentajeStock()
         
-        # 4. Cargar datos filtrados en la tabla de alertas
         if stock_en_alerta:
-            for producto_alerta in stock_en_alerta:
-                if int(producto_alerta[STOCK_ACTUAL_TABLA_ALERTA]) <= int(producto_alerta[STOCK_MÍNIMO_TABLA_ALERTA]):  # stock_actual <= stock_mínimo
+            # Usamos enumerate para saber si es par o impar
+            for i, producto_alerta in enumerate(stock_en_alerta):
+                
+                tag_fila = 'par' if i % 2 == 0 else 'impar'
+                
+                # Prioridad: Si es alerta, usa el tag 'alerta', si no, usa el color alterno
+                if int(producto_alerta[STOCK_ACTUAL_TABLA_ALERTA]) <= int(producto_alerta[STOCK_MÍNIMO_TABLA_ALERTA]):
                     self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta, tags=('alerta',))
                 else:
-                    self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta)
+                    self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta, tags=(tag_fila,))
 
     def cargarTablaProducto(self):
-        
         """
-        Carga los datos de los productos (almacenados en self.datos) 
-        en la tabla (Treeview) de la interfaz.
+        Carga los datos de los productos alternando colores de fila.
         """
-        
-        # Verifica que self.datos no esté vacío o sea None
-        if self.datos: 
-            for producto in self.datos:
-                # 'producto' es una tupla que se asume está en el orden:
-                # (codigo, nombre, precio, stock_actual, stock_minimo, descripcion, id_producto)
-                # Este orden debe coincidir con las columnas definidas 
-                # en 'crearTablaConProductos' y la consulta a la BD.
-                self.tabla_productos.insert('', tk.END, values=producto)
+        # Configurar los tags de color en la tabla
+        self.tabla_productos.tag_configure('impar', background=COLOR_BLANCO)
+        self.tabla_productos.tag_configure('par', background=COLOR_FONDO_APP)
+
+        if self.datos:
+            for i, producto in enumerate(self.datos):
+                # Determinar si la fila es par o impar
+                tag_fila = 'par' if i % 2 == 0 else 'impar'
+                
+                # Insertar con el tag correspondiente
+                self.tabla_productos.insert('', tk.END, values=producto, tags=(tag_fila,))
+            self.aplicarOrdenGuardado(self.tabla_productos, 'productos')
 
     def eliminarVenta(self):
         """
@@ -1540,14 +1698,17 @@ class Aplicación(tk.Tk):
         # 1. Verificar que una VENTA esté seleccionada (tabla izquierda)
         item_seleccionado = self.tabla_ventas.focus()
         if not item_seleccionado:
-            messagebox.showwarning("Atención", 
-                                   "Debe seleccionar una Venta de la tabla de la izquierda (Historial) para poder eliminarla.")
+            MensajeModerno(self,"Atención", 
+                                   "Debe seleccionar una Venta de la tabla de la izquierda (Historial) para poder eliminarla.",
+                                   tipo="advertencia")
+            
             return
 
         # 2. Pedir confirmación DE ELIMINACIÓN
-        respuesta_eliminar = messagebox.askyesno("Confirmar Eliminación", 
+        confirmación = MensajeModerno(self, "Confirmar Eliminación", 
                                         "¿Está seguro de que desea eliminar esta VENTA permanentemente?\n"
-                                        "Esta acción no se puede deshacer.")
+                                        "Esta acción no se puede deshacer.", tipo="pregunta")
+        respuesta_eliminar = confirmación.resultado
         
         if respuesta_eliminar:
             try:
@@ -1561,10 +1722,11 @@ class Aplicación(tk.Tk):
                 
                 if detalles:
                     # 5. Preguntar si se desea REPONER STOCK
-                    respuesta_reponer = messagebox.askyesno("Reponer Stock", 
+                    confirmación_reponer = MensajeModerno(self, "Reponer Stock", 
                                                             "¿Desea devolver los productos al stock?\n\n"
                                                             "Sí: Se sumará la cantidad al stock actual.\n"
-                                                            "No: Solo se borrará el registro de la venta.")
+                                                            "No: Solo se borrará el registro de la venta.", tipo="pregunta")
+                    respuesta_reponer = confirmación_reponer.resultado
                     
                     if respuesta_reponer:
                         # Hacer el bucle para reponer uno por uno
@@ -1589,16 +1751,17 @@ class Aplicación(tk.Tk):
                 
                 # 9. Refrescar la tabla de productos (por si el stock cambió)
                 self.datos = self.base_de_datos.consultarDatosProductos()
+                
                 self.cargarDatosEnTablaEnHilo() # Actualiza productos y alertas de stock
                 
-                messagebox.showinfo("Éxito", "Venta eliminada correctamente.")
+                MensajeModerno(self, "Éxito", "Venta eliminada correctamente.", tipo="info")
 
                 # Resetear controles
                 self.botón_eliminar_venta.config(state='disabled')
                 self.tabla_ventas.selection_set(())
                 
             except Exception as e:
-                messagebox.showerror("Error", f"No se pudo eliminar la venta: {str(e)}")
+                MensajeModerno(self, "Error", f"No se pudo eliminar la venta: {str(e)}", tipo="error")
 
     def verPrecioProducto(self):
         """
@@ -1609,8 +1772,8 @@ class Aplicación(tk.Tk):
 
         # 1. Validar que el campo no esté vacío
         if not código:
-            messagebox.showwarning("Campo vacío", "Por favor, ingrese un código de producto.")
-            self.entrada_código_venta.focus()
+            MensajeModerno(self,"Campo vacío", "Por favor, ingrese un código de producto.", tipo="advertencia")
+            self.entrada_código_producto_venta.focus()
             return
 
         # 2. Consultar la base de datos
@@ -1624,10 +1787,10 @@ class Aplicación(tk.Tk):
             self.etiqueta_precio_venta.configure(style=ESTILO_PRECIO_ENCONTRADO_VENTA)
         else:
             # FALLO: Producto no encontrado
-            messagebox.showinfo("No encontrado", "No existe un producto con ese código.")
+            MensajeModerno(self, "No encontrado", "No existe un producto con ese código.", tipo="info")
             self.precio_venta_var.set(ETIQUETA_PRECIO_VENTA) # Restablece a "Precio:"
             self.etiqueta_precio_venta.configure(style=ESTILO_PRECIO_ENCONTRADO_VENTA)
-            self.entrada_código_venta.focus()
+            self.entrada_código_producto_venta.focus()
 
     def cargarDatosEnTablaEnHilo(self):
         def cargar_datos():
@@ -1768,18 +1931,18 @@ class Aplicación(tk.Tk):
                 self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza los datos locales.
                 self.cargarDatosEnTablaEnHilo()
                 funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
-                messagebox.showinfo("Éxito", "Producto modificado correctamente.")
+                MensajeModerno(self, "Éxito", "Producto modificado correctamente.", tipo="éxito")
 
             except ValueError as ve:
                 # Captura el error de "Código duplicado" (1062)
-                messagebox.showerror("Error de Duplicado", str(ve))
+                MensajeModerno(self, "Error de Duplicado", str(ve), tipo="error")
                 self.entrada_código.focus() # Pone el foco en el campo incorrecto
             except Exception as e:
                 # Captura cualquier otro error
-                messagebox.showerror("Error de Base de Datos", 
-                                     f"No se pudo modificar el producto: {str(e)}")
+                MensajeModerno(self, "Error de Base de Datos", 
+                                     f"No se pudo modificar el producto: {str(e)}", tipo="error")
         elif not item_seleccionado:
-            messagebox.showwarning("Error", "Debe seleccionar un producto")
+            MensajeModerno(self,"Error", "Debe seleccionar un producto", tipo="advertencia")
     
     def eliminarProducto(self):
         """
@@ -1803,8 +1966,9 @@ class Aplicación(tk.Tk):
         if item_seleccionado:  # Verifica si hay un ítem seleccionado.
             
             # Pedir confirmación al usuario es una buena práctica antes de eliminar
-            respuesta = messagebox.askyesno("Confirmar Eliminación", 
-                                            "¿Está seguro de que desea eliminar este producto permanentemente?")
+            confirmación = MensajeModerno(self, "Confirmar Eliminación", 
+                                            "¿Está seguro de que desea eliminar este producto permanentemente?", tipo="pregunta")
+            respuesta = confirmación.resultado
             
             if respuesta: # Si el usuario hizo clic en "Sí"
                 try:
@@ -1829,16 +1993,16 @@ class Aplicación(tk.Tk):
                     # Recarga los datos en la tabla (en un hilo).
                     self.cargarDatosEnTablaEnHilo()  
                     
-                    messagebox.showinfo("Éxito", "Producto eliminado correctamente.")
+                    MensajeModerno(self, "Éxito", "Producto eliminado correctamente.", tipo="éxito")
                 
                 except ValueError as ve:
-                    messagebox.showerror("No se puede eliminar", str(ve))
+                    MensajeModerno(self, "No se puede eliminar", str(ve), tipo="error")
                 
                 except Exception as e:
-                    messagebox.showerror("Error al Eliminar", 
-                                         f"No se pudo eliminar el producto: {str(e)}")
+                    MensajeModerno(self, "Error al Eliminar", 
+                                         f"No se pudo eliminar el producto: {str(e)}", tipo="error")
         else:
-            messagebox.showwarning("Error", "Debe seleccionar un producto")
+            MensajeModerno(self,"Error", "Debe seleccionar un producto", tipo="advertencia")
     
     def limpiarCamposProductos(self):
         self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.
@@ -1893,9 +2057,67 @@ class Aplicación(tk.Tk):
             if nuevo_valor <= ADVERTENCIA_CANT_CAR_DESCRIP:  # Si está por debajo del umbral de advertencia.
                 self.etiqueta_contador_caracteres.configure(style="rojo.TLabel")  # Cambia el color a rojo.
                 if nuevo_valor <= 0:  # Si llega a 0.
-                    messagebox.showwarning("Advertencia", "Ha alcanzado el límite de caracteres.")  # Muestra advertencia.
+                    MensajeModerno(self,"Advertencia", "Ha alcanzado el límite de caracteres.", tipo="advertencia")  # Muestra advertencia.
             else:  # Si está por encima o igual al umbral de advertencia.
                 self.etiqueta_contador_caracteres.configure(style="verde.TLabel")  # Cambia el color a verde.
+    
+    def limitar_longitud_entrada(self, event, entry_widget, string_var, máx_caracteres, mensaje_error):
+        """
+        Limita la longitud del texto en un Entry. 
+        Muestra una advertencia si se intenta escribir más allá del límite.
+        Maneja escritura normal y pegado (Ctrl+V).
+
+        Args:
+            event: El evento de teclado.
+            entry_widget: El widget Entry.
+            string_var: La variable StringVar asociada.
+            máx_caracteres: Entero con el límite máximo.
+            mensaje_error: Texto a mostrar en la advertencia.
+        """
+         # Obtener el carácter real y la tecla presionada
+        carácter = event.char
+        tecla = event.keysym
+        
+        # 1. Identificar teclas de control (Navegación, Borrado, etc.)
+        # Estas siempre se permiten y no disparan alertas.
+        teclas_control = ('BackSpace', 'Delete', 'Left', 'Right', 'Home', 'End', 'Tab', 'Return', 'Escape')
+        es_control = tecla in teclas_control
+        
+        # 2. Identificar atajos (Ctrl+C, Ctrl+A, etc.) excepto Pegar
+        es_atajo = (event.state & 0x0004) and (tecla.lower() in ['c', 'x', 'a'])
+
+        # 3. Verificar si hay texto seleccionado (si escribo encima, no sumo caracteres)
+        hay_selección = entry_widget.select_present()
+
+        # CASO A: Permitir teclas de control y atajos
+        if es_control or es_atajo:
+            return None
+
+        # CASO B: Manejo de Pegado (Ctrl+V)
+        if (event.state & 0x0004) and tecla.lower() == 'v':
+            
+            def validar_pegado():
+                contenido = string_var.get()
+                if len(contenido) > máx_caracteres:
+                    # Opción: Truncar el texto al máximo permitido
+                    string_var.set(contenido[:máx_caracteres])
+                    MensajeModerno(self, "Límite excedido", mensaje_error, tipo="advertencia")
+            
+            entry_widget.after_idle(validar_pegado)
+            return None
+
+        # CASO C: Intento de escribir un carácter imprimible
+        if carácter and carácter.isprintable():
+            largo_actual = len(string_var.get())
+            
+            # Si ya llegamos al límite Y NO estamos sobrescribiendo una selección
+            if largo_actual >= máx_caracteres and not hay_selección:
+                MensajeModerno(self, "Límite alcanzado", mensaje_error, tipo="advertencia")
+                return "break" # Bloquear la escritura
+            
+            return None # Permitir escribir
+
+        return None
 
     def limitar_caracteres_descripción(self, event = None):
         """
@@ -1951,51 +2173,80 @@ class Aplicación(tk.Tk):
             retornar = None
         return retornar
     
-    def controlar_caracteres_solo_enteros(self, event, entry_widget, string_var):
+    def controlar_caracteres_solo_enteros(self, event, entry_widget, string_var, max_valor=None):
         """
-        Valida que solo se ingresen números enteros en un campo de entrada.
-        
-        Args:
-            event (tk.Event): El evento de teclado.
-            entry_widget (tk.Entry): El widget de entrada que disparó el evento.
-            string_var (tk.StringVar): La variable de control asociada al widget.
+        Valida que solo se ingresen números enteros y que no superen un valor máximo.
         """
-        retornar = "break"  # Valor por defecto: evita la inserción del carácter.
-        carácter = event.char  # Obtiene el carácter individual ingresado.
-        tecla = event.keysym.lower()  # Obtiene la tecla presionada (en minúsculas).
+        # Importación local para evitar referencia circular si está en otro archivo
+        from MensajeModerno import MensajeModerno 
 
-        # Permite dígitos, teclas de navegación/edición y combinaciones Ctrl+X/C/V.
-        if carácter and carácter in '0123456789':
-            retornar = None  # Permite dígitos.
-        elif (event and (event.keysym == 'BackSpace' or event.keysym.startswith('Shift') or \
-                         event.keysym in ('Delete', 'Home', 'End', 'Up', 'Down', 'Left', 'Right'))) or \
-             (event.state & 0x0004 and tecla in ['x', 'v', 'c']):
+        retornar = "break"
+        carácter = event.char
+        tecla = event.keysym.lower()
 
-            # Maneja el pegado (Ctrl+V).
-            if event.state & 0x0004 and tecla == 'v':
-                # --- CÓDIGO MODIFICADO ---
-                contenido_antes = string_var.get()  # Guarda el contenido actual
-                posición_cursor_antes = entry_widget.index("insert")  # Guarda la posición
-                retornar = None  # Permite la inserción (temporalmente).
+        # Permitir teclas de control siempre
+        es_tecla_control = (event.keysym in ('BackSpace', 'Delete', 'Left', 'Right', 'Home', 'End', 'Tab'))
+        es_copiar_pegar = (event.state & 0x0004 and tecla in ['x', 'v', 'c'])
 
-                # Define una función para actualizar el contenido después del pegado.
-                def actualizar_contenido():
-                    """
-                    Valida y corrige el contenido después de un evento de pegado.
-                    Revierte si el contenido pegado no es un entero.
-                    """
-                    contenido_después = string_var.get()  # Obtiene el contenido
-                    es_entero_natural = validación_tipo_de_datos.esEntero(contenido_después)
-                    if not es_entero_natural:  # Si no es un entero válido
-                        string_var.set(contenido_antes)  # Restaura el contenido
-                        entry_widget.icursor(posición_cursor_antes)  # Restaura la posición
+        if es_tecla_control or es_copiar_pegar:
+            
+            # Lógica de PEGADO (Ctrl+V)
+            if tecla == 'v': 
+                contenido_antes = string_var.get()
+                pos_antes = entry_widget.index("insert")
+                retornar = None 
 
-                # Ejecuta 'actualizar_contenido' después de que Tkinter procese el evento.
-                entry_widget.after_idle(actualizar_contenido)
-                # --- FIN CÓDIGO MODIFICADO ---
+                def validar_pegado():
+                    contenido = string_var.get()
+                    # 1. Validar si es entero
+                    if not validación_tipo_de_datos.esEntero(contenido):
+                        string_var.set(contenido_antes)
+                        entry_widget.icursor(pos_antes)
+                    # 2. Validar si supera el máximo (solo si es un número válido y hay límite)
+                    elif max_valor is not None:
+                        try:
+                            if int(contenido) > max_valor:
+                                string_var.set(contenido_antes)
+                                entry_widget.icursor(pos_antes)
+                                MensajeModerno(self, "Valor excedido", 
+                                               f"El valor para este campo no puede ser mayor a {max_valor}.", tipo="advertencia")
+                        except ValueError:
+                            pass # No debería pasar si esEntero es True
+
+                entry_widget.after_idle(validar_pegado)
             else:
-                retornar = None  # Permite otras teclas (Ctrl+X/C, navegación, etc.).
-        return retornar  # Retorna "break" si el carácter no es válido, None si es válido.
+                return None # Permitir otras teclas de control
+
+        # Lógica de ESCRITURA (Dígitos)
+        elif carácter and carácter.isdigit():
+            # Simulamos el nuevo texto antes de permitirlo
+            texto_actual = string_var.get()
+            pos_cursor = entry_widget.index("insert")
+            
+            # Construir el nuevo número hipotético
+            if entry_widget.select_present(): # Si hay texto seleccionado que se va a reemplazar
+                try:
+                    sel_start = entry_widget.index("sel.first")
+                    sel_end = entry_widget.index("sel.last")
+                    nuevo_texto = texto_actual[:sel_start] + carácter + texto_actual[sel_end:]
+                except tk.TclError:
+                    nuevo_texto = texto_actual[:pos_cursor] + carácter + texto_actual[pos_cursor:]
+            else:
+                nuevo_texto = texto_actual[:pos_cursor] + carácter + texto_actual[pos_cursor:]
+
+            # Validar el máximo
+            if max_valor is not None:
+                try:
+                    if int(nuevo_texto) > max_valor:
+                        MensajeModerno(self, "Valor excedido", 
+                                       f"El valor para este campo no puede ser mayor a {max_valor}.", tipo="advertencia")
+                        return "break" # Bloquear escritura
+                except ValueError:
+                    pass 
+
+            return None # Permitir escritura
+
+        return retornar
     
     def cerrarVentana(self):
         ventana_cierre = VentanaCierre(self)  # Crea la ventana, usando self como padre
@@ -2012,6 +2263,56 @@ class Aplicación(tk.Tk):
 
         # Ejecuta la espera de los hilos en un *NUEVO* hilo
         threading.Thread(target=esperar_hilos, daemon=True).start()
+    
+    def ordenarColumna(self, tree, col, descendente, nombre_tabla=None):
+        """
+        Ordena una tabla (tree) por una columna (col) y guarda el estado.
+        Reaplica el color de filas (cebra) después de ordenar.
+        """
+        # 1. Guardar el estado actual
+        if nombre_tabla:
+            self.estado_orden[nombre_tabla] = (col, descendente)
+
+        # 2. Obtener la lista de tuplas
+        datos = [(tree.set(k, col), k) for k in tree.get_children('')]
+
+        # 3. Intentar ordenar
+        try:
+            # Eliminar símbolos de moneda ($)
+            datos.sort(key=lambda t: float(t[0].replace('$', '').strip()), reverse=descendente)
+        except ValueError:
+            # Orden alfabético
+            datos.sort(key=lambda t: t[0].lower(), reverse=descendente)
+
+        # 4. Mover los ítems y REAPLICAR TAGS DE COLOR
+        for index, (val, k) in enumerate(datos):
+            tree.move(k, '', index)
+            
+            # --- NUEVO: Recalcular par/impar ---
+            tag_fila = 'par' if index % 2 == 0 else 'impar'
+            
+            # Mantenemos el tag 'alerta' si ya lo tenía (para la tabla de stock)
+            tags_actuales = list(tree.item(k, 'tags'))
+            if 'alerta' in tags_actuales:
+                # Si es alerta, forzamos 'alerta' (que tiene fondo rojo)
+                tree.item(k, tags=('alerta',))
+            else:
+                # Si no, aplicamos el color alterno
+                tree.item(k, tags=(tag_fila,))
+
+        # 5. Actualizar el encabezado
+        tree.heading(col, command=lambda: self.ordenarColumna(tree, col, not descendente, nombre_tabla))
+    
+    def aplicarOrdenGuardado(self, tree, nombre_tabla):
+        """
+        Re-aplica el ordenamiento guardado a una tabla después de recargarla.
+        """
+        # Recupera la columna y el sentido (asc/desc) del diccionario de estado
+        columna, descendente = self.estado_orden.get(nombre_tabla, (None, False))
+        
+        # Si hay un orden guardado para esa tabla, lo aplicamos
+        if columna:
+            self.ordenarColumna(tree, columna, descendente, nombre_tabla)
     
 if __name__ == "__main__":
     app = Aplicación()
