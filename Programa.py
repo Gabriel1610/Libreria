@@ -9,6 +9,7 @@ from tkinter import messagebox
 from VentanaCierre import VentanaCierre
 import threading
 import functools
+import facturación
 import sys
 from datetime import datetime
 import funciones_útiles
@@ -139,7 +140,7 @@ BOTÓN_LIMPIAR_VENTA = "Limpiar"
 BOTÓN_VACIAR_CARRITO_VENTA = "Vaciar carrito"
 ETIQUETA_PRECIO_VENTA = ""
 ANCHO_ENTRADA_CÓDIGO_VENTA = 20
-MÁX_CARACTERES_CÓDIGO_PRODUCTO = 5
+MÁX_CARACTERES_CÓDIGO_PRODUCTO = 50
 MENSAJE_LÍMITE_CÓDIGO_PRODUCTO = f"El código no puede tener más de {MÁX_CARACTERES_CÓDIGO_PRODUCTO} caracteres."
 BOTÓN_FINALIZAR_VENTA = 'Finalizar venta'
 BOTÓN_ELIMINAR_VENTA_VENTA = "Eliminar venta"
@@ -1156,11 +1157,26 @@ class Aplicación(tk.Tk):
 
         # Confirmar la venta con el total
         total_venta_str = self.etiqueta_valor_total_produdcto.cget('text')
+        total_float = float(total_venta_str) # Convertimos a float para la factura
         confirmación = MensajeModerno(self, "Confirmar Venta", 
                                         f"¿Desea finalizar la venta por un total de $ {total_venta_str}?", tipo="pregunta")
         respuesta = confirmación.resultado
         if not respuesta:
             return
+
+        # --- INICIO FACTURACIÓN AFIP ---
+        # Intentamos facturar ANTES de guardar en la BD local
+        # (Opcional: Puedes hacerlo al revés si prefieres guardar aunque falle AFIP)
+        
+        resultado_afip = facturación.emitir_factura_b(total_float)
+        
+        if not resultado_afip['exito']:
+            MensajeModerno(self, "Error AFIP", resultado_afip['mensaje'], tipo="error")
+            return # Cancelamos todo si no se pudo facturar
+            
+        cae = resultado_afip['cae']
+        nro_factura = resultado_afip['numero_factura']
+        # --- FIN FACTURACIÓN AFIP ---
 
         try:
             # 2. Guardar los datos de las filas ANTES de borrarlas
@@ -1208,7 +1224,11 @@ class Aplicación(tk.Tk):
             # 8. Respaldar la base de datos
             funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
 
-            MensajeModerno(self, "Éxito", f"Venta ID: {id_venta_generado} registrada correctamente.", tipo="info")
+            MensajeModerno(self, "Éxito", 
+                           f"Venta registrada correctamente.\n\n"
+                           f"Factura B N°: {nro_factura}\n"
+                           f"CAE: {cae}", 
+                           tipo="éxito")
 
         except ValueError as ve:
             # Captura errores de "Stock insuficiente" o "Código duplicado en carrito"

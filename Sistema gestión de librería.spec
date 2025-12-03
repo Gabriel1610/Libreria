@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['c:\\Users\\Gabriel\\OneDrive\\Computadora\\Facultad\\UTN\\Resistencia\\Práctica profesional\\2025\\Trabajo\\Programa\\Programa.py'],
+    ['c:\\Users\\Gabriel\\OneDrive\\Computadora\\Documents\\Programas\\Librería CEAU\\Programa.py'],
     pathex=[],
     binaries=[],
-    datas=[('c:\\Users\\Gabriel\\OneDrive\\Computadora\\Facultad\\UTN\\Resistencia\\Práctica profesional\\2025\\Trabajo\\Programa\\librería.ico', '.')],
+    datas=[('c:\\Users\\Gabriel\\OneDrive\\Computadora\\Documents\\Programas\\Librería CEAU\\librería.ico', '.')],
     hiddenimports=['mysql.connector', 'mysql.connector.locales.eng.client_error', 'babel.numbers', 'tkinter'],
     hookspath=[],
     hooksconfig={},
@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['c:\\Users\\Gabriel\\OneDrive\\Computadora\\Facultad\\UTN\\Resistencia\\Práctica profesional\\2025\\Trabajo\\Programa\\librería.ico'],
+    icon=['c:\\Users\\Gabriel\\OneDrive\\Computadora\\Documents\\Programas\\Librería CEAU\\librería.ico'],
 )
