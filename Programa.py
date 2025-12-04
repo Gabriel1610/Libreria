@@ -42,7 +42,7 @@ STICKY_WIDGET_OESTE_PRODUCTOS = "w"
 PADX_ETIQUETA_NOMBRE_PRODUCTOS = 0
 PADY_ETIQUETA_NOMBRE_PRODUCTOS = 0  # Padding específico para la etiqueta nombre
 PADX_ENTRADA_IZQUIERDA_NOMBRE_PRODUCTOS = (80, 0)
-ANCHO_COLUMNA_NOMBRE_PRODUCTOS = 425
+ANCHO_COLUMNA_NOMBRE_PRODUCTOS = 380
 MÁX_CARACTERES_NOMBRE_PRODUCTO = 100
 MENSAJE_LÍMITE_NOMBRE_PRODUCTO = f"El nombre del producto no puede superar los {MÁX_CARACTERES_NOMBRE_PRODUCTO} caracteres."
 
@@ -52,25 +52,27 @@ PADX_ENTRADA_IZQUIERDA_PRECIO_PRODUCTOS = (80, 0)
 MÁX_DÍGITOS_PRECIO = 10
 MÁX_DECIMALES_PRECIO = 2
 
-PADX_ETIQUETA_STOCK_ACTUAL_PRODUCTOS = 0
-PADY_ETIQUETA_STOCK_ACTUAL_PRODUCTOS = 0  # Padding específico para la etiqueta stock
+PADX_ETIQUETA_UMBRAL_VENTAS_PRODUCTOS = 0
+PADY_ETIQUETA_UMBRAL_VENTAS_PRODUCTOS = 0  # Padding específico para la etiqueta stock
 
-PADX_ENTRADA_IZQUIERDA_STOCK_ACTUAL_PRODUCTOS = (110, 0)
+PADX_ENTRADA_IZQUIERDA_UMBRAL_VENTAS_PRODUCTOS = (110, 0)
 PADY_WIDGETS_GENERAL_PRODUCTOS = 5   # Padding vertical para la mayoría de widgets
 
 ANCHO_ENTRADA_NOMBRE_PRODUCTOS = 40
 ANCHO_ENTRADA_PRECIO_PRODUCTOS = 20
 
-ETIQUETA_STOCK_ACTUAL_TEXTO_PRODUCTOS = "Stock actual:"
-ANCHO_ENTRADA_STOCK_ACTUAL_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
-MÁX_STOCK_ACTUAL_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock actual
-ETIQUETA_STOCK_MÍNIMO_TEXTO_PRODUCTOS = "Stock mínimo:"
-ANCHO_ENTRADA_STOCK_MÍNIMO_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
-MÁX_STOCK_MÍNIMO_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock mínimo
+ETIQUETA_UMBRAL_VENTAS_TEXTO_PRODUCTOS = "Umbral ventas:"
+ANCHO_ENTRADA_UMBRAL_VENTAS_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
+MÁX_UMBRAL_VENTAS_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock actual
+ETIQUETA_VENTAS_ACUM_TEXTO = "Ventas acum.:"
+ANCHO_ENTRADA_VENTAS_ACUM_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
+MÁX_VENTAS_ACUM_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock mínimo
+IDX_VENTAS_ACUM = 3
+IDX_UMBRAL = 4
 
-PADX_ETIQUETA_STOCK_MÍNIMO_PRODUCTOS = 0
-PADY_ETIQUETA_STOCK_MÍNIMO_PRODUCTOS = 0  # Padding específico para la etiqueta stock mínimo
-PADX_ENTRADA_IZQUIERDA_STOCK_MÍNIMO_PRODUCTOS = (120, 0)
+PADX_ETIQUETA_VENTAS_ACUM_PRODUCTOS = 0
+PADY_ETIQUETA_VENTAS_ACUM_PRODUCTOS = 0  # Padding específico para la etiqueta stock mínimo
+PADX_ENTRADA_IZQUIERDA_VENTAS_ACUM_PRODUCTOS = (110, 0)
 
 ETIQUETA_DESCRIPCIÓN_TEXTO_PRODUCTOS = "Descripción:"
 
@@ -114,6 +116,16 @@ TEXTO_BOTÓN_LIMPIAR_PRODUCTOS = "Limpiar"
 TEXTO_BOTÓN_BUSCAR_PRODUCTOS = "Buscar"
 TEXTO_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = "Todo"
 
+# --- Constantes para la UI de Ajustes (Medios de Pago) ---
+TÍTULO_LABELFRAME_MEDIOS_PAGO = "Medios de pago"
+ETIQUETA_EXISTENTES_MEDIOS = "Existentes:"
+ETIQUETA_NUEVO_MEDIO = "Nuevo medio de pago:"
+BOTÓN_AGREGAR_MEDIO = "Agregar"
+BOTÓN_ELIMINAR_MEDIO = "Eliminar"
+BOTÓN_EDITAR_MEDIO = "Editar"
+MÁX_CARACTERES_NOMBRE_MEDIO_PAGO = 30
+BOTÓN_LIMPIAR_MEDIO = "Limpiar"
+
 PADX_BOTÓN_AÑADIR_PRODUCTOS = (0, 0)
 PADX_BOTÓN_EDITAR_PRODUCTOS = (100, 0)
 PADX_BOTÓN_ELIMINAR_PRODUCTOS = (200, 0)
@@ -139,7 +151,6 @@ BOTÓN_QUITAR_CARRITO_VENTA = "Quitar del carrito"
 BOTÓN_LIMPIAR_VENTA = "Limpiar"
 BOTÓN_VACIAR_CARRITO_VENTA = "Vaciar carrito"
 ETIQUETA_PRECIO_VENTA = ""
-ANCHO_ENTRADA_CÓDIGO_VENTA = 20
 MÁX_CARACTERES_CÓDIGO_PRODUCTO = 50
 MENSAJE_LÍMITE_CÓDIGO_PRODUCTO = f"El código no puede tener más de {MÁX_CARACTERES_CÓDIGO_PRODUCTO} caracteres."
 BOTÓN_FINALIZAR_VENTA = 'Finalizar venta'
@@ -152,8 +163,8 @@ PADX_GENERAL_VENTA = 5
 PADY_GENERAL_VENTA = 5
 STICKY_WIDGET_OESTE_VENTA = "w"
 STICKY_WIDGET_CENTRO_PRECIO_VENTA = "wens"
-STOCK_ACTUAL_TABLA_ALERTA = 1
-STOCK_MÍNIMO_TABLA_ALERTA = 2
+UMBRAL_VENTAS_TABLA_ALERTA = 1
+VENTAS_ACUM_TABLA_ALERTA = 2
 
 # Constante genérica de evento
 EVENTO_TECLA_PRESIONADA = '<Key>'
@@ -308,6 +319,19 @@ class Aplicación(tk.Tk):
             self.índice_productos = self.cuaderno.index(self.página_cuaderno_productos)
             self.índice_ventas = self.cuaderno.index(self.página_cuaderno_ventas)
 
+            # --- NUEVA PESTAÑA: AJUSTES ---
+            self.página_cuaderno_ajustes = ttk.Frame(self.cuaderno)
+            
+            # Configuración básica de la grilla para que sea flexible
+            self.página_cuaderno_ajustes.grid_columnconfigure(0, weight=1)
+            self.página_cuaderno_ajustes.grid_rowconfigure(0, weight=1)
+            
+            # Añadir la pestaña al cuaderno
+            self.cuaderno.add(self.página_cuaderno_ajustes, text="Ajustes")
+            
+            # Guardar el índice (útil si quieres detectar cuándo se abre esta pestaña)
+            self.índice_ajustes = self.cuaderno.index(self.página_cuaderno_ajustes)
+
             # Posiciona el cuaderno (con las pestañas) en la ventana principal.
             self.cuaderno.grid(column=0, row=0, sticky="nsew")
 
@@ -319,19 +343,21 @@ class Aplicación(tk.Tk):
             self.crearLabelFrameVentaProducto()
             self.crearTablaCarrito()
             self.actualizarTablaVentasEnHilo()
+            self.actualizarListaMediosEnHilo()
+            self.crear_label_frame_medios_pago()
 
-            self.etiqueta_total_produdcto = ttk.Label(self.página_cuaderno_ventas, 
+            self.etiqueta_total_producto = ttk.Label(self.página_cuaderno_ventas, 
                                                       text=ETIQUETA_TOTAL_PRODUCTOS,
                                                       font=FUENTE_TOTAL_PRODUCTO)
-            self.etiqueta_total_produdcto.grid(column=COLUMNA_TOTAL_PRODUCTOS, row=FILA_TOTAL_PRODUCTO, 
+            self.etiqueta_total_producto.grid(column=COLUMNA_TOTAL_PRODUCTOS, row=FILA_TOTAL_PRODUCTO, 
                                     padx=PADX_TOTAL_PRODUCTO, 
                                     pady=PADY_TOTAL_PRODUCTO, 
                                     sticky=STICKY_TOTAL_PRODUCTO)
 
-            self.etiqueta_valor_total_produdcto = ttk.Label(self.página_cuaderno_ventas, 
+            self.etiqueta_valor_total_producto = ttk.Label(self.página_cuaderno_ventas, 
                                                       text=ETIQUETA_VALOR_TOTAL_PRODUCTOS,
                                                       font=FUENTE_TOTAL_PRODUCTO)
-            self.etiqueta_valor_total_produdcto.grid(column=COLUMNA_VALOR_TOTAL_PRODUCTOS, row=FILA_TOTAL_PRODUCTO, 
+            self.etiqueta_valor_total_producto.grid(column=COLUMNA_VALOR_TOTAL_PRODUCTOS, row=FILA_TOTAL_PRODUCTO, 
                                     padx=PADX_TOTAL_PRODUCTO, 
                                     pady=PADY_TOTAL_PRODUCTO, 
                                     sticky=STICKY_TOTAL_PRODUCTO)
@@ -345,6 +371,82 @@ class Aplicación(tk.Tk):
         except Exception as e:
             MensajeModerno(self, "Error crítico", f"Fallo en inicialización: {str(e)}", tipo="error")
             sys.exit(1)
+    
+    def procesarVentaFinal(self, nombre_medio_pago):
+        """
+        Guarda la venta en la base de datos con el medio de pago seleccionado.
+        Si el medio de pago está configurado para facturar, emite factura con ARCA.
+        """
+        try:
+            # 1. Obtener datos necesarios
+            items_carrito_ids = self.tabla_carrito.get_children()
+            total_venta_str = self.etiqueta_valor_total_producto.cget('text')
+            total_float = float(total_venta_str)
+            fecha_actual = datetime.now()
+
+            # --- VERIFICAR SI SE DEBE FACTURAR ---
+            # Consultamos a la BD si este medio de pago tiene 'facturar = 1'
+            datos_medio = self.base_de_datos.obtenerDetalleMedioPago(nombre_medio_pago)
+            
+            se_factura = False
+            if datos_medio:
+                se_factura = bool(datos_medio[0])
+
+            # Variables para el mensaje final (por defecto vacías)
+            cae = "-"
+            nro_factura = "-"
+
+            # --- FACTURACIÓN AFIP (Condicional) ---
+            if se_factura:
+                resultado_afip = facturación.emitir_factura_b(total_float)
+                
+                if not resultado_afip['exito']:
+                    MensajeModerno(self, "Error AFIP", resultado_afip['mensaje'], tipo="error")
+                    return # Cortamos si falla la facturación obligatoria
+                    
+                cae = resultado_afip['cae']
+                nro_factura = resultado_afip['numero_factura']
+            # --------------------------------------
+
+            # 3. Registrar VENTA (Pasamos el NOMBRE directamente)
+            id_venta_generado = self.base_de_datos.registrarVenta([nombre_medio_pago, fecha_actual])
+
+            if id_venta_generado is None:
+                MensajeModerno(self, "Error", "No se pudo registrar la venta principal.", tipo="error")
+                return
+
+            # 4. Registrar DETALLES y actualizar STOCK
+            for item_id in items_carrito_ids:
+                valores = self.tabla_carrito.item(item_id, 'values')
+                código = valores[0]
+                precio_unitario = float(valores[2])
+                cantidad = int(valores[3])
+
+                self.base_de_datos.ingresarDetalleVenta([id_venta_generado, código, cantidad, precio_unitario])
+                self.base_de_datos.actualizarVentasProducto([cantidad, código])
+            
+            # 5. Limpieza y Refresco
+            funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
+            self.etiqueta_valor_total_producto.config(text="0.00")
+            self.limpiarCamposVenta()
+
+            self.actualizarTablaVentasEnHilo()
+            self.datos = self.base_de_datos.consultarDatosProductos() 
+            self.cargarDatosEnTablaEnHilo() 
+            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+
+            # 6. Mensaje de Éxito (Diferente según si se facturó o no)
+            mensaje_exito = f"Venta registrada correctamente.\nMedio: {nombre_medio_pago}"
+            
+            if se_factura:
+                mensaje_exito += f"\n\nFactura B N°: {nro_factura}\nCAE: {cae}"
+
+            MensajeModerno(self, "Éxito", mensaje_exito, tipo="éxito")
+
+        except ValueError as ve:
+            MensajeModerno(self, "Error en Venta", str(ve), tipo="error")
+        except Exception as e:
+            MensajeModerno(self, "Error Crítico", f"Ocurrió un error al procesar la venta: {str(e)}", tipo="error")
     
     def alCambiarPestaña(self, event):
         """
@@ -389,8 +491,8 @@ class Aplicación(tk.Tk):
             'código',
             'nombre',
             'precio',
-            'stock_actual',
-            'stock_mínimo',
+            'ventas_acum',
+            'umbral_ventas',
             'descripción'
         )
 
@@ -404,8 +506,8 @@ class Aplicación(tk.Tk):
         self.tabla_productos.heading('código', text='Código')
         self.tabla_productos.heading('nombre', text='Nombre')
         self.tabla_productos.heading('precio', text='Precio')
-        self.tabla_productos.heading('stock_actual', text='Stock actual')
-        self.tabla_productos.heading('stock_mínimo', text='Stock mínimo')
+        self.tabla_productos.heading('ventas_acum', text='Ventas Acum.')
+        self.tabla_productos.heading('umbral_ventas', text='Umbral Objetivo')
         self.tabla_productos.heading('descripción', text='Descripción', anchor='w')
 
         # Habilitar ordenamiento por clic en columnas
@@ -436,23 +538,24 @@ class Aplicación(tk.Tk):
         self.tabla_productos.column(
             "precio",
             anchor='center',
-            width=100,
-            minwidth=100,
+            width=90,
+            minwidth=90,
             stretch=tk.NO
         )
         
         self.tabla_productos.column(
-            "stock_actual",
+            "ventas_acum",
             anchor='center',
-            width=100,
-            minwidth=100,
+            width=110,
+            minwidth=110,
             stretch=tk.NO
         )
+        
         self.tabla_productos.column(
-            "stock_mínimo",
+            "umbral_ventas",
             anchor='center',
-            width=100,
-            minwidth=100,
+            width=120,
+            minwidth=120,
             stretch=tk.NO
         )
         self.tabla_productos.column(
@@ -486,54 +589,55 @@ class Aplicación(tk.Tk):
     def crearTablaStockAlerta(self):
         """
         Crea la etiqueta y la tabla (Treeview) para mostrar los productos
-        con bajo stock en la pestaña de productos.
+        con bajo stock (o alerta de ventas) en la pestaña de productos.
         """
         # --- 1. Crear la Etiqueta ---
-        self.etiqueta_stock_alerta = ttk.Label(self.página_cuaderno_productos, 
+        self.etiqueta_umbral_alerta = ttk.Label(self.página_cuaderno_productos, 
                                                text="Stock en alerta", 
-                                               font=FUENTE_TÍTULO_PRODUCTOS) # Re-usamos la fuente
+                                               font=FUENTE_TÍTULO_PRODUCTOS)
         
-        # Posicionar la etiqueta (Fila 4, debajo del formulario)
-        self.etiqueta_stock_alerta.grid(column=1, row=3, columnspan=2, 
+        # Posicionar la etiqueta (Fila 3, Columna 1)
+        self.etiqueta_umbral_alerta.grid(column=1, row=3, columnspan=2, 
                                         padx=10, pady=(0, 0), sticky="w")
 
-        # --- 2. Definir Columnas ---
-        columnas_stock = ('código', 'stock_actual', 'stock_mínimo', 'nombre')
+        # --- 2. Definir Columnas (Solo Código y Nombre) ---
+        columnas_stock = ('código', 'nombre')
 
         self.tabla_stock_alerta = ttk.Treeview(
             self.página_cuaderno_productos,
             columns=columnas_stock,
             show='headings',
-            height=12,  # Altura para la tabla de alertas
-            selectmode='none'  # <-- AÑADE ESTA LÍNEA
+            height=12,
+            selectmode='none' # Solo lectura
         )
 
-        # 3. Configurar el tag para la alerta (texto rojo)
-        self.tabla_stock_alerta.tag_configure('alerta', foreground='red')
+        # 3. Configurar tags de estilo
+        self.tabla_stock_alerta.tag_configure('alerta', foreground='red', background='#FFF0F0')
 
         # --- 4. Definir Encabezados ---
         self.tabla_stock_alerta.heading('código', text='Código', anchor='w')
-        self.tabla_stock_alerta.heading('stock_actual', text='Stock actual', anchor='center')
-        self.tabla_stock_alerta.heading('stock_mínimo', text='Stock mínimo', anchor='center')
         self.tabla_stock_alerta.heading('nombre', text='Nombre', anchor='w')
+        
+        # Habilitar ordenamiento por clic (Opcional, para consistencia)
+        for col in columnas_stock:
+            self.tabla_stock_alerta.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_stock_alerta, c, False, 'nombre'))
 
         # --- 5. Posicionar la Tabla ---
         self.tabla_stock_alerta.grid(
             row=4,
             column=1,
             padx=(10, 0),
-            columnspan=2, # Ocupa todo el ancho horizontal
-            sticky='nsew' # Se expande para llenar el espacio
+            columnspan=2,
+            sticky='nsew'
         )
 
         # --- 6. Definir Anchos de Columna ---
-        # (Ajustados para que la tabla se expanda)
-        self.tabla_stock_alerta.column("código", anchor='w', width=205, stretch=tk.NO)
-        self.tabla_stock_alerta.column("stock_actual", anchor='center', width=100, stretch=tk.NO)
-        self.tabla_stock_alerta.column("stock_mínimo", anchor='center', width=100, stretch=tk.NO)
-        self.tabla_stock_alerta.column("nombre", anchor='w', width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS, stretch=tk.NO) # Se estira
+        # Código: Ancho fijo para que se lea bien
+        self.tabla_stock_alerta.column("código", anchor='w', width=150, stretch=tk.NO)
+        # Nombre: Se estira para ocupar el resto del espacio (stretch=tk.YES)
+        self.tabla_stock_alerta.column("nombre", anchor='w', width=300, stretch=tk.YES)
         
-        # --- 7. Scrollbars para la nueva tabla ---
+        # --- 7. Scrollbars ---
         self.barra_desplazamiento_vertical_stock = ttk.Scrollbar(
             self.página_cuaderno_productos,
             orient=tk.VERTICAL,
@@ -584,77 +688,66 @@ class Aplicación(tk.Tk):
         # 6. Actualizar el total de la venta
 
         # Obtener el total actual de la etiqueta
-        total_actual_str = self.etiqueta_valor_total_produdcto.cget('text')
+        total_actual_str = self.etiqueta_valor_total_producto.cget('text')
         total_actual_float = float(total_actual_str)
         nuevo_total_float = total_actual_float - subtotal_a_restar
 
-        self.etiqueta_valor_total_produdcto.config(text=f"{nuevo_total_float:.2f}")
+        self.etiqueta_valor_total_producto.config(text=f"{nuevo_total_float:.2f}")
 
     def crearTablaConVentas(self):
         """
-        Crea la etiqueta y la tabla (Treeview) para mostrar el listado
-        de ventas en la pestaña de ventas.
+        Crea la etiqueta y la tabla (Treeview) para mostrar el listado de ventas.
         """
         
-        # --- 1. Crear la Etiqueta "Ventas" (Fila 0) ---
+        # --- 1. Etiqueta ---
         self.etiqueta_título_ventas = ttk.Label(self.página_cuaderno_ventas, 
                                                text="Ventas", 
-                                               font=FUENTE_TÍTULO_PRODUCTOS) # Re-usamos la fuente
-        
-        # Posicionar la etiqueta (Fila 0, Col 0)
-        self.etiqueta_título_ventas.grid(column=0, row=0, 
-                                        padx=5, pady=(2, 2), sticky="w")
+                                               font=FUENTE_TÍTULO_PRODUCTOS)
+        self.etiqueta_título_ventas.grid(column=0, row=0, padx=5, pady=(2, 2), sticky="w")
 
-        # --- 2. Definir Columnas ---
-        columnas_ventas = ('id', 'fecha_hora', 'total')
+        # --- 2. Definir Columnas (AGREGADO 'medio') ---
+        columnas_ventas = ('id', 'fecha_hora', 'medio', 'total')
 
         self.tabla_ventas = ttk.Treeview(
             self.página_cuaderno_ventas,
             columns=columnas_ventas,
             show='headings',
-            height=15  # Altura de la tabla
+            height=15
         )
 
-        # --- 3. Definir Encabezados ---
+        # --- 3. Encabezados ---
         self.tabla_ventas.heading('id', text='ID', anchor='center')
         self.tabla_ventas.heading('fecha_hora', text='Fecha y hora', anchor='center')
+        self.tabla_ventas.heading('medio', text='Medio Pago', anchor='center') # <-- NUEVO
         self.tabla_ventas.heading('total', text='Total', anchor='center')
 
-        # Habilitar ordenamiento por clic en columnas
+        # Ordenamiento
         for col in columnas_ventas:
             self.tabla_ventas.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_ventas, c, False, 'ventas'))
 
-        # --- 4. Posicionar la Tabla (Fila 1, Col 0) ---
-        self.tabla_ventas.grid(
-            row=1,
-            column=0,
-            rowspan=2,
-            sticky='nsw' # Se expande verticalmente (ns) y se pega a la izquierda (w)
-        )
+        # --- 4. Posición ---
+        self.tabla_ventas.grid(row=1, column=0, rowspan=2, sticky='nsw')
 
-        # --- 5. Definir Anchos de Columna (No expandibles) ---
-        self.tabla_ventas.column("id", anchor='center', width=85, stretch=tk.NO)
-        self.tabla_ventas.column("fecha_hora", anchor='center', width=125, stretch=tk.NO)
-        self.tabla_ventas.column("total", anchor='e', width=120, stretch=tk.NO)
+        # --- 5. Anchos de Columna (Ajustados) ---
+        self.tabla_ventas.column("id", anchor='center', width=50, stretch=tk.NO)
+        self.tabla_ventas.column("fecha_hora", anchor='center', width=130, stretch=tk.NO)
+        self.tabla_ventas.column("medio", anchor='center', width=100, stretch=tk.YES) # <-- NUEVO (Se estira)
+        self.tabla_ventas.column("total", anchor='e', width=100, stretch=tk.NO)
         
-        # --- 6. Scrollbars para la tabla de ventas ---
+        # --- 6. Scrollbars ---
         self.barra_desplazamiento_vertical_ventas = ttk.Scrollbar(
-            self.página_cuaderno_ventas,
-            orient=tk.VERTICAL,
-            command=self.tabla_ventas.yview
-        )
+            self.página_cuaderno_ventas, orient=tk.VERTICAL, command=self.tabla_ventas.yview)
         self.barra_desplazamiento_horizontal_ventas = ttk.Scrollbar(
-            self.página_cuaderno_ventas,
-            orient=tk.HORIZONTAL,
-            command=self.tabla_ventas.xview
-        )
+            self.página_cuaderno_ventas, orient=tk.HORIZONTAL, command=self.tabla_ventas.xview)
 
         self.tabla_ventas.configure(xscrollcommand=self.barra_desplazamiento_horizontal_ventas.set)
         self.tabla_ventas.configure(yscrollcommand=self.barra_desplazamiento_vertical_ventas.set)
 
-        # --- 7. Posicionar scrollbars ---
+        # Posicionar scrollbars
         self.barra_desplazamiento_vertical_ventas.grid(row=1, column=1, rowspan=2, sticky='ns')
         self.barra_desplazamiento_horizontal_ventas.grid(row=3, column=0, sticky='nwe')
+        
+        # Bind del click
         self.tabla_ventas.bind("<<TreeviewSelect>>", self.cargarDetalleVentaEnCarrito)
 
     def crearLabelFrameProductos(self):
@@ -741,42 +834,46 @@ class Aplicación(tk.Tk):
                                     máx_dígitos=MÁX_DÍGITOS_PRECIO, 
                                     máx_decimales=MÁX_DECIMALES_PRECIO, 
                                     event=event))
-        # --- Stock Actual ---
-        self.etiqueta_stock = ttk.Label(self.labelframe_productos, text=ETIQUETA_STOCK_ACTUAL_TEXTO_PRODUCTOS)
-        self.etiqueta_stock.grid(column=0, row=3,
-                                padx=PADX_ETIQUETA_STOCK_ACTUAL_PRODUCTOS, 
+        self.etiqueta_umbral = ttk.Label(self.labelframe_productos, text=ETIQUETA_UMBRAL_VENTAS_TEXTO_PRODUCTOS)
+        self.etiqueta_umbral.grid(column=0, row=3,
+                                padx=PADX_ETIQUETA_UMBRAL_VENTAS_PRODUCTOS, 
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
-        self.stock = tk.StringVar()
-        self.entrada_stock = ttk.Entry(self.labelframe_productos, 
-                                    width=ANCHO_ENTRADA_STOCK_ACTUAL_PRODUCTOS, 
-                                    textvariable=self.stock)
-        self.entrada_stock.grid(column=0, row=3,
-                                padx=PADX_ENTRADA_IZQUIERDA_STOCK_ACTUAL_PRODUCTOS, 
+        self.umbral = tk.StringVar()
+        self.entrada_umbral = ttk.Entry(self.labelframe_productos, 
+                                    width=ANCHO_ENTRADA_UMBRAL_VENTAS_PRODUCTOS, 
+                                    textvariable=self.umbral)
+        self.entrada_umbral.grid(column=0, row=3,
+                                padx=PADX_ENTRADA_IZQUIERDA_UMBRAL_VENTAS_PRODUCTOS, 
                                 pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                 sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
-        self.entrada_stock.bind(EVENTO_TECLA_PRESIONADA, 
-                                lambda event, widget=self.entrada_stock, var=self.stock: 
-                                self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_STOCK_ACTUAL_PRODUCTO))
+        
+        self.entrada_umbral.bind(EVENTO_TECLA_PRESIONADA, 
+                                lambda event, widget=self.entrada_umbral, var=self.umbral: 
+                                self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_UMBRAL_VENTAS_PRODUCTO))
+        
+        self.entrada_umbral.bind("<KeyRelease>", self.manejarCambioUmbral)
 
-        # --- Stock Mínimo ---
-        self.etiqueta_stock_mínimo = ttk.Label(self.labelframe_productos, text=ETIQUETA_STOCK_MÍNIMO_TEXTO_PRODUCTOS)
-        self.etiqueta_stock_mínimo.grid(column=0, row=4,
-                                        padx=PADX_ETIQUETA_STOCK_MÍNIMO_PRODUCTOS, 
+        self.etiqueta_ventas_acumuladas = ttk.Label(self.labelframe_productos, text=ETIQUETA_VENTAS_ACUM_TEXTO)
+        self.etiqueta_ventas_acumuladas.grid(column=0, row=4,
+                                        padx=PADX_ETIQUETA_VENTAS_ACUM_PRODUCTOS, 
                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
-        self.stock_mínimo = tk.StringVar()
-        self.entrada_stock_mínimo = ttk.Entry(self.labelframe_productos, 
-                                            width=ANCHO_ENTRADA_STOCK_MÍNIMO_PRODUCTOS, 
-                                            textvariable=self.stock_mínimo)
-        self.entrada_stock_mínimo.grid(column=0, row=4,
-                                        padx=PADX_ENTRADA_IZQUIERDA_STOCK_MÍNIMO_PRODUCTOS, 
+        self.ventas_acumuladas = tk.StringVar()
+        
+        self.entrada_ventas_acumuladas = ttk.Entry(self.labelframe_productos, 
+                                            width=ANCHO_ENTRADA_VENTAS_ACUM_PRODUCTOS, 
+                                            textvariable=self.ventas_acumuladas,
+                                            state='disabled') 
+        
+        self.entrada_ventas_acumuladas.grid(column=0, row=4,
+                                        padx=PADX_ENTRADA_IZQUIERDA_VENTAS_ACUM_PRODUCTOS, 
                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         
-        self.entrada_stock_mínimo.bind(EVENTO_TECLA_PRESIONADA, 
-                                       lambda event, widget=self.entrada_stock_mínimo, var=self.stock_mínimo: 
-                                       self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_STOCK_MÍNIMO_PRODUCTO))
+        self.entrada_ventas_acumuladas.bind(EVENTO_TECLA_PRESIONADA, 
+                                       lambda event, widget=self.entrada_ventas_acumuladas, var=self.ventas_acumuladas: 
+                                       self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_VENTAS_ACUM_PRODUCTO))
 
         # --- Descripción (en Columna 1) ---
         self.etiqueta_descripción = ttk.Label(self.labelframe_productos, 
@@ -923,7 +1020,7 @@ class Aplicación(tk.Tk):
         # Caja de texto (Código)
         self.código_venta = tk.StringVar()
         self.entrada_código_producto_venta = ttk.Entry(self.labelframe_venta_producto, 
-                                            width=ANCHO_ENTRADA_CÓDIGO_VENTA, 
+                                            width=ANCHO_ENTRADA_CÓDIGO_PRODUCTOS, 
                                             textvariable=self.código_venta)
         self.entrada_código_producto_venta.grid(column=1, row=0, 
                                       padx=PADX_GENERAL_VENTA, 
@@ -1067,7 +1164,7 @@ class Aplicación(tk.Tk):
             funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
             
             # 4. Resetear el total a 0.00
-            self.etiqueta_valor_total_produdcto.config(text="0.00")
+            self.etiqueta_valor_total_producto.config(text="0.00")
             self.botón_eliminar_venta.config(state='disabled')  # Desactivar el botón "Eliminar venta"
             
             # Deseleccionar filas en tabla_ventas
@@ -1111,7 +1208,7 @@ class Aplicación(tk.Tk):
 
             if detalles is None:
                 MensajeModerno(self, "Error de BD", "No se pudieron consultar los detalles de la venta.", tipo="error")
-                self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
+                self.etiqueta_valor_total_producto.config(text="0.00") # Reset total
                 return
 
             total_recuperado = 0.0
@@ -1127,147 +1224,115 @@ class Aplicación(tk.Tk):
                 total_recuperado += float(item[4])
 
             # 6. Actualizar la etiqueta del total
-            self.etiqueta_valor_total_produdcto.config(text=f"{total_recuperado:.2f}")
+            self.etiqueta_valor_total_producto.config(text=f"{total_recuperado:.2f}")
 
             # Activar el botón "Eliminar venta"
             self.botón_eliminar_venta.config(state='normal')
 
         except Exception as e:
             MensajeModerno(self, "Error", f"Ocurrió un error al cargar los detalles: {str(e)}", tipo="error")
-            self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
+            self.etiqueta_valor_total_producto.config(text="0.00") # Reset total
 
     def finalizarVenta(self):
         """
-        Finaliza la venta actual:
-        1. Verifica que el carrito no esté vacío.
-        2. Registra la VENTA.
-        3. Registra el DETALLE_VENTA para cada ítem.
-        4. Actualiza el STOCK de cada producto.
-        5. Refresca la tabla de ventas.
-        6. Refresca la tabla de productos (stock).
+        Inicia el proceso de finalización: Valida carrito, confirma monto
+        y abre la ventana de selección de medio de pago.
         """
-        
-        # 1. Obtener todos los items del carrito
+        # 1. Validar Carrito
         items_carrito_ids = self.tabla_carrito.get_children()
-
-        # Condición 1: Carrito vacío
         if not items_carrito_ids:
-            MensajeModerno(self,"Carrito vacío", "No hay productos en el carrito para finalizar la venta.", tipo="advertencia")
+            MensajeModerno(self,"Carrito vacío", "No hay productos en el carrito.", tipo="advertencia")
             return
 
-        # Confirmar la venta con el total
-        total_venta_str = self.etiqueta_valor_total_produdcto.cget('text')
-        total_float = float(total_venta_str) # Convertimos a float para la factura
-        confirmación = MensajeModerno(self, "Confirmar Venta", 
+        # 2. Confirmar Monto
+        total_venta_str = self.etiqueta_valor_total_producto.cget('text')
+        confirmacion = MensajeModerno(self, "Confirmar Venta", 
                                         f"¿Desea finalizar la venta por un total de $ {total_venta_str}?", tipo="pregunta")
-        respuesta = confirmación.resultado
-        if not respuesta:
-            return
-
-        # --- INICIO FACTURACIÓN AFIP ---
-        # Intentamos facturar ANTES de guardar en la BD local
-        # (Opcional: Puedes hacerlo al revés si prefieres guardar aunque falle AFIP)
         
-        resultado_afip = facturación.emitir_factura_b(total_float)
+        if confirmacion.resultado:
+            # 3. Abrir Ventana de Medio de Pago
+            self.abrirVentanaMedioPago()
+    
+    def abrirVentanaMedioPago(self):
+        """Abre una ventana modal para seleccionar el medio de pago."""
         
-        if not resultado_afip['exito']:
-            MensajeModerno(self, "Error AFIP", resultado_afip['mensaje'], tipo="error")
-            return # Cancelamos todo si no se pudo facturar
-            
-        cae = resultado_afip['cae']
-        nro_factura = resultado_afip['numero_factura']
-        # --- FIN FACTURACIÓN AFIP ---
+        ventana_pago = tk.Toplevel(self)
+        ventana_pago.title("Seleccionar Medio de Pago")
+        ventana_pago.geometry("350x200")
+        ventana_pago.resizable(False, False)
+        ventana_pago.configure(bg="white")
+        
+        # Centrar
+        x = self.winfo_x() + (self.winfo_width() // 2) - 175
+        y = self.winfo_y() + (self.winfo_height() // 2) - 100
+        ventana_pago.geometry(f"+{x}+{y}")
 
-        try:
-            # 2. Guardar los datos de las filas ANTES de borrarlas
-            items_a_procesar = []
-            for item_id in items_carrito_ids:
-                # (código, nombre, precio_unitario, cantidad, subtotal)
-                items_a_procesar.append(self.tabla_carrito.item(item_id, 'values'))
+        # Etiqueta
+        lbl = ttk.Label(ventana_pago, text="Seleccione el medio de pago:", background="white", font=('Segoe UI', 11))
+        lbl.pack(pady=(20, 10))
 
-            # 3. Registrar la VENTA principal y obtener el id_venta
-            fecha_actual = datetime.now()
-            id_venta_generado = self.base_de_datos.registrarVenta([fecha_actual])
+        # Obtener medios de la BD (devuelve [(nombre, facturar), ...])
+        medios_raw = self.base_de_datos.consultarMediosPago()
+        nombres_medios = [m[0] for m in medios_raw] if medios_raw else []
 
-            if id_venta_generado is None:
-                MensajeModerno(self, "Error", "No se pudo registrar la venta principal.", tipo="error")
-                return
+        # Combobox
+        combo_medios = ttk.Combobox(ventana_pago, values=nombres_medios, state="readonly", font=('Segoe UI', 10))
+        combo_medios.pack(pady=5, padx=20, fill='x')
 
-            # 4. Registrar los DETALLES y actualizar STOCK (Loop)
-            for item in items_a_procesar:
-                código = item[0]
-                precio_unitario = float(item[2])
-                cantidad = int(item[3])
+        # Botón Finalizar (Deshabilitado al inicio)
+        btn_finalizar = ttk.Button(ventana_pago, text="Finalizar", state="disabled", style="TButton")
+        btn_finalizar.pack(pady=20)
 
-                # 4a. Ingresar el detalle de la venta
-                #     Espera: [id_venta, código_producto, cantidad, precio_unitario]
-                datos_detalle = [id_venta_generado, código, cantidad, precio_unitario]
-                self.base_de_datos.ingresarDetalleVenta(datos_detalle)
+        # Función para habilitar botón
+        def habilitar_boton(event):
+            btn_finalizar.config(state="normal")
+        
+        combo_medios.bind("<<ComboboxSelected>>", habilitar_boton)
 
-                # 4b. Actualizar (restar) el stock del producto
-                #     Espera: [cantidad_vendida, codigo_producto]
-                datos_stock = [cantidad, código]
-                self.base_de_datos.actualizarStockProducto(datos_stock)
-            
-            # 5. Limpiar la UI de Venta
-            funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
-            self.etiqueta_valor_total_produdcto.config(text="0.00") # Reset total
-            self.limpiarCamposVenta()
+        # Función para procesar la venta al hacer clic
+        def confirmar_pago():
+            medio_seleccionado = combo_medios.get()
+            ventana_pago.destroy() # Cerrar ventana
+            # Llamar a la lógica de guardado pasando el medio
+            self.procesarVentaFinal(medio_seleccionado)
 
-            # 6. Refrescar la tabla de VENTAS (ahora que hay una nueva)
-            self.actualizarTablaVentasEnHilo()
-
-            # 7. Refrescar la tabla de PRODUCTOS (porque el stock cambió)
-            self.datos = self.base_de_datos.consultarDatosProductos() # Recargar datos principales
-            self.cargarDatosEnTablaEnHilo() # Esto actualiza tabla_productos y tabla_alertas
-
-            # 8. Respaldar la base de datos
-            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
-
-            MensajeModerno(self, "Éxito", 
-                           f"Venta registrada correctamente.\n\n"
-                           f"Factura B N°: {nro_factura}\n"
-                           f"CAE: {cae}", 
-                           tipo="éxito")
-
-        except ValueError as ve:
-            # Captura errores de "Stock insuficiente" o "Código duplicado en carrito"
-            MensajeModerno(self, "Error en Venta", str(ve), tipo="error")
-        except Exception as e:
-            # Captura cualquier otro error de BD
-            MensajeModerno(self, "Error Crítico", f"Ocurrió un error al procesar la venta: {str(e)}", tipo="error")
+        btn_finalizar.config(command=confirmar_pago)
+        
+        # Hacer modal
+        ventana_pago.transient(self)
+        ventana_pago.grab_set()
+        self.wait_window(ventana_pago)
 
     def actualizarTablaVentas(self):
         """
-        Consulta la base de datos para obtener todas las ventas con su total
-        y actualiza la 'tabla_ventas' en la interfaz.
+        Consulta la base de datos y actualiza la 'tabla_ventas' en la interfaz.
         """
-        
         try:
-            
             self.tabla_ventas.tag_configure('impar', background=COLOR_BLANCO)
             self.tabla_ventas.tag_configure('par', background=COLOR_FONDO_APP)
 
-            # 1. Consultar los datos frescos
+            # 1. Consultar datos (Ahora trae 4 campos)
             lista_ventas = self.base_de_datos.consultarVentasConTotal()
 
-            # 2. Borrar todos los items existentes
+            # 2. Borrar
             funciones_útiles.borrarTodasLasFilas(self.tabla_ventas)
             
-            # 3. Cargar datos en la tabla
+            # 3. Cargar
             if lista_ventas:
                 for i, venta in enumerate(lista_ventas):
-                    # Formatear la fecha/hora
+                    # Desempaquetar tupla: (id, fecha, medio, total)
                     id_v = venta[0]
-                    fecha_hora_dt = venta[1] # Es un objeto datetime
+                    fecha_hora_dt = venta[1]
                     fecha_hora_str = fecha_hora_dt.strftime(funciones_útiles.FORMATO_PREFERIDO_HORA_Y_FECHA)
-                    total = f"{venta[2]:.2f}"
+                    medio_pago = venta[2]     # <-- NUEVO DATO
+                    total = f"{venta[3]:.2f}" # <-- AHORA ES ÍNDICE 3
                     
-                    # Calcular par/impar
                     tag_fila = 'par' if i % 2 == 0 else 'impar'
                     
-                    # Insertar CON tags
-                    self.tabla_ventas.insert('', tk.END, values=(id_v, fecha_hora_str, total), tags=(tag_fila,))
+                    # Insertar con el nuevo campo
+                    self.tabla_ventas.insert('', tk.END, 
+                                           values=(id_v, fecha_hora_str, medio_pago, total), 
+                                           tags=(tag_fila,))
             
             self.aplicarOrdenGuardado(self.tabla_ventas, 'ventas')
                     
@@ -1276,114 +1341,142 @@ class Aplicación(tk.Tk):
             
     def agregarAlCarrito(self):
         """
-        Agrega o actualiza un producto en el carrito, verificando el stock.
+        Agrega o actualiza un producto en el carrito de compras.
 
-        1. Valida campos de entrada.
-        2. Consulta el producto y su stock.
-        3. Verifica si el producto ya está en el carrito.
-        4. Calcula el stock total necesario (nuevo + en carrito).
-        5. Compara con el stock disponible y advierte si es insuficiente.
-        6. Si hay stock, INSERTA una nueva fila o ACTUALIZA la existente.
-        7. Actualiza el total del carrito.
+        1. Valida los campos de entrada.
+        2. Consulta el producto en la base de datos.
+        3. Verifica si el producto ya existe en el carrito.
+        4. Si existe, suma la cantidad nueva a la existente.
+        5. Inserta una nueva fila o actualiza la existente.
+        6. Actualiza el valor total de la venta.
         """
         
         # 1. Validación de campos (Código y Cantidad no vacíos)
-        if not self.esUnProductoValidoParaElCarrito():
+        if not self.esUnProductoVálidoParaElCarrito():
             return
         
         código = self.código_venta.get().strip()
         cantidad_deseada_str = self.cantidad_venta.get().strip()
-        cantidad_deseada = int(cantidad_deseada_str) # Convertir ahora
+        cantidad_deseada = int(cantidad_deseada_str) 
 
-        # 2. Consultar producto (Necesitamos el stock disponible primero)
+        # 2. Consultar producto
         try:
             producto_encontrado = self.base_de_datos.buscarProductoPorCódigo(código)
         except Exception as e:
             MensajeModerno(self, "Error de BD", f"Error al buscar el producto por código: {str(e)}", tipo="error")
             return
 
-        # 3. Producto no encontrado
-        if not producto_encontrado:
+        # 3. Procesar resultado
+        if producto_encontrado:
+            # (Índices: 1:nombre, 2:precio_venta)
+            nombre = producto_encontrado[1]
+            precio_unitario = float(producto_encontrado[2])
+
+            # 4. Verificar si el producto ya está en el carrito
+            cantidad_en_carrito = 0
+            item_id_en_carrito = None 
+
+            for item_id in self.tabla_carrito.get_children():
+                fila = self.tabla_carrito.item(item_id, 'values')
+                if fila[0].lower() == código.lower(): # Si el código coincide
+                    cantidad_en_carrito = int(fila[3])
+                    item_id_en_carrito = item_id
+                    break 
+            
+            # 5. Insertar o Actualizar
+            
+            # Subtotal de los items NUEVOS que se están agregando ahora
+            subtotal_float_nuevo = precio_unitario * cantidad_deseada 
+            
+            # Calcular la nueva cantidad TOTAL para la fila
+            nueva_cantidad_total_item = cantidad_deseada + cantidad_en_carrito
+            nuevo_subtotal_item_fila = precio_unitario * nueva_cantidad_total_item
+            
+            # Preparar valores para la fila
+            valores_fila = (
+                código, 
+                nombre, 
+                str(precio_unitario), 
+                nueva_cantidad_total_item, 
+                f"{nuevo_subtotal_item_fila:.2f}" 
+            )
+
+            # Estilos de fila
+            numero_filas_actuales = len(self.tabla_carrito.get_children())
+            tag_fila = 'par' if numero_filas_actuales % 2 == 0 else 'impar'
+            self.tabla_carrito.tag_configure('impar', background=COLOR_BLANCO)
+            self.tabla_carrito.tag_configure('par', background=COLOR_FONDO_APP)
+            
+            if item_id_en_carrito:
+                # ACTUALIZAR fila existente
+                self.tabla_carrito.item(item_id_en_carrito, values=valores_fila)
+            else:
+                # INSERTAR nueva fila
+                self.tabla_carrito.insert('', tk.END, values=valores_fila, tags=(tag_fila,))
+
+            # 6. Actualizar el Valor total de la venta
+            # Usamos la variable con el nombre original de tu __init__ (con el error de tipeo 'produdcto')
+            total_actual_str = self.etiqueta_valor_total_produdcto.cget('text')
+            nuevo_total_float = float(total_actual_str) + subtotal_float_nuevo
+            nuevo_total_formateado = f"{nuevo_total_float:.2f}"
+            
+            self.etiqueta_valor_total_produdcto.config(text=nuevo_total_formateado)
+            
+            # 7. Limpiar campos
+            self.limpiarCamposVenta() 
+
+        else:
+            # Producto no encontrado
             MensajeModerno(self, "No encontrado", "No existe un producto con ese código.", tipo="info")
             self.entrada_código_producto_venta.focus()
+    
+    def agregarMedioPago(self):
+        """
+        Orquesta la lógica para agregar o restaurar un medio de pago.
+        """
+        # 1. Obtener datos
+        nombre = self.var_nuevo_medio.get().strip()
+        facturar = 1 if self.var_facturar_medio.get() else 0 
+
+        # 2. Validaciones básicas de UI
+        if not nombre:
+            MensajeModerno(self, "Atención", "Debe escribir un nombre para el medio de pago.", tipo="advertencia")
+            self.entry_nuevo_medio.focus()
             return
 
-        # 4. PROCESAR Y VERIFICAR STOCK
-        # (Índices: 1:nombre, 2:precio_venta, 3:stock_actual)
-        nombre = producto_encontrado[1]
-        precio_unitario = float(producto_encontrado[2])
-        stock_disponible = int(producto_encontrado[3])
+        try:
+            # 3. Verificar existencia en BD
+            resultado_existencia = self.base_de_datos.verificarEstadoMedioPago(nombre)
+            
+            if resultado_existencia:
+                # Desempaquetar tupla (id, eliminado)
+                id_medio, estado_eliminado = resultado_existencia
+                
+                if estado_eliminado == 0:
+                    # CASO A: Existe y está activo -> Error
+                    MensajeModerno(self, "Duplicado", f"El medio de pago '{nombre}' ya existe.", tipo="error")
+                    self.entry_nuevo_medio.focus()
+                    return # Cortamos la ejecución aquí
+                
+                else:
+                    # CASO B: Existe pero estaba eliminado -> Restaurar
+                    self.base_de_datos.restaurarMedioPago(id_medio, facturar)
+                    mensaje_exito = f"El medio de pago '{nombre}' estaba eliminado y ha sido restaurado."
+            
+            else:
+                # CASO C: No existe -> Insertar nuevo
+                self.base_de_datos.ingresarNuevoMedioPago(nombre, facturar)
+                mensaje_exito = f"Medio de pago '{nombre}' agregado correctamente."
 
-        # 5. VERIFICAR SI EL PRODUCTO YA ESTÁ EN EL CARRITO
-        cantidad_en_carrito = 0
-        item_id_en_carrito = None # Para saber si debemos UPTATE o INSERT
+            # 4. Finalización Exitosa (Común para Caso B y C)
+            MensajeModerno(self, "Éxito", mensaje_exito, tipo="éxito")
+            self.limpiarCamposMedioPago()
+            self.actualizarListaMediosEnHilo() # Recargar lista
 
-        for item_id in self.tabla_carrito.get_children():
-            fila = self.tabla_carrito.item(item_id, 'values')
-            if fila[0].lower() == código.lower(): # Si el código (fila[0]) coincide
-                cantidad_en_carrito = int(fila[3]) # Obtener la cantidad (fila[3])
-                item_id_en_carrito = item_id # Guardar el ID de la fila
-                break # Encontramos el producto, salir del loop
-        
-        # 6. Calcular stock total necesario
-        stock_necesario = cantidad_deseada + cantidad_en_carrito
+        except Exception as e:
+            MensajeModerno(self, "Error Crítico", f"Ocurrió un error en la base de datos: {e}", tipo="error")
 
-        # 7. ¡La Validación de Stock!
-        if stock_necesario > stock_disponible:
-            MensajeModerno(self,"Stock Insuficiente", 
-                                 f"No hay stock suficiente para '{nombre}'.\n\n"
-                                 f"Stock disponible: {stock_disponible}\n"
-                                 f"Cantidad ya en carrito: {cantidad_en_carrito}\n"
-                                 f"Cantidad deseada: {cantidad_deseada}\n\n"
-                                 f"Total necesario: {stock_necesario}",
-                                 tipo="advertencia")
-            self.entrada_cantidad_venta.focus()
-            return # Detener la función
-
-        # 8. Si hay stock, INSERTAR o ACTUALIZAR
-        
-        # Subtotal de los *nuevos* items a añadir
-        subtotal_float_nuevo = precio_unitario * cantidad_deseada 
-        
-        # Calcular la *nueva cantidad total* y el *nuevo subtotal* para la FILA
-        nueva_cantidad_total_item = cantidad_deseada + cantidad_en_carrito
-        nuevo_subtotal_item_fila = precio_unitario * nueva_cantidad_total_item
-        
-        # Preparar los valores de la fila
-        valores_fila = (
-            código, 
-            nombre, 
-            str(precio_unitario), 
-            nueva_cantidad_total_item, 
-            f"{nuevo_subtotal_item_fila:.2f}" # Usar el *total* subtotal para la fila
-        )
-
-        # Calcular si la nueva fila será par o impar basándonos en cuántas hay
-        numero_filas_actuales = len(self.tabla_carrito.get_children())
-        tag_fila = 'par' if numero_filas_actuales % 2 == 0 else 'impar'
-
-        # Configurar estilos (solo necesitas hacerlo una vez, pero aquí asegura que existan)
-        self.tabla_carrito.tag_configure('impar', background=COLOR_BLANCO)
-        self.tabla_carrito.tag_configure('par', background=COLOR_FONDO_APP)
-        
-        if item_id_en_carrito:
-            # ACTUALIZAR la fila existente
-            self.tabla_carrito.item(item_id_en_carrito, values=valores_fila)
-        else:
-            # INSERTAR una nueva fila
-            self.tabla_carrito.insert('', tk.END, values=valores_fila, tags=(tag_fila,))
-
-        # 9. Actualizar el Valor total de la venta
-        # Sumamos solo el subtotal de la cantidad *nueva* que se agregó
-        total_actual_str = self.etiqueta_valor_total_produdcto.cget('text')
-        nuevo_total_float = float(total_actual_str) + subtotal_float_nuevo
-        nuevo_total_formateado = f"{nuevo_total_float:.2f}"
-        self.etiqueta_valor_total_produdcto.config(text=nuevo_total_formateado)
-        
-        # 10. Limpiar campos de entrada de venta para el próximo producto
-        self.limpiarCamposVenta()
-
-    def esUnProductoValidoParaElCarrito(self):
+    def esUnProductoVálidoParaElCarrito(self):
         """
         Verifica si los campos de código de producto y cantidad de venta contienen
         cadenas de texto no vacías.
@@ -1412,6 +1505,26 @@ class Aplicación(tk.Tk):
             producto_válido = False
             
         return producto_válido
+
+    def limpiarCamposMedioPago(self):
+        """
+        Restablece el formulario de medios de pago a su estado inicial.
+        """
+        # 1. Borrar caja de texto
+        self.var_nuevo_medio.set("")
+        
+        # 2. Destildar "Facturar" (Lógica y Visual)
+        self.var_facturar_medio.set(False)
+        # Restablecer el icono visualmente a "Caja vacía"
+        self.lbl_icono_facturar.config(text="☐", foreground="#555", font=('Segoe UI', 14))
+        
+        # 3. Deseleccionar la lista
+        self.listbox_medios.selection_clear(0, tk.END)
+        
+        # 4. Poner el foco en el campo de texto
+        self.entry_nuevo_medio.focus()
+
+        self.btn_agregar_medio.config(state='normal')
 
     def limpiarCamposVenta(self):
         """
@@ -1484,63 +1597,76 @@ class Aplicación(tk.Tk):
     def añadirProducto(self):
         """
         Valida los campos de entrada y añade el nuevo producto a la base de datos.
+        Si los campos de ventas/umbral están vacíos, se guardan como NULL.
         """
-        if self.esUnProductoVálido():  # 1. Verifica si los datos ingresados son válidos.
-            # 2. Obtiene el código del producto
+        if self.esUnProductoVálido():  
+            # 1. Obtener datos básicos
             código = self.código.get().strip()
-            # 3. Obtiene el resto de los datos de los widgets de entrada
             nombre = self.nombre.get().strip()
-            # La validación ya confirmó que estos son números válidos
-            precio = float(self.precio.get().strip())
-            stock_actual = int(self.stock.get().strip())
-            stock_mínimo = int(self.stock_mínimo.get().strip())
             descripción = self.texto_desplazado.get("1.0", tk.END).strip()
+            
+            # Precio (ya validado como float)
+            precio = float(self.precio.get().strip())
 
-            # 4. Crea una lista con los datos del nuevo producto
-            #    (El orden debe coincidir con el de tu tabla en la base de datos)
+            # 2. Manejar campos opcionales (NULL si están vacíos)
+            ventas_acum_str = self.ventas_acum.get().strip()
+            umbral_str = self.umbral.get().strip()
+
+            ventas_acumuladas = int(ventas_acum_str) if ventas_acum_str else None
+            umbral_ventas = int(umbral_str) if umbral_str else None
+
+            # 3. Crear lista de datos
+            # Orden: [codigo, nombre, descripcion, precio, ventas_acum, umbral]
             producto = [
                 código,
                 nombre,
-                nombre,
-                descripción,
                 descripción,
                 precio,
-                stock_actual,
-                stock_mínimo
+                ventas_acumuladas,
+                umbral_ventas
             ]
                 
             try:
-                # 5. Llama a la función para ingresar el producto en la base de datos.
                 self.base_de_datos.ingresarProducto(producto)
                 
-                # 6. Actualiza la interfaz
-                self.limpiarCamposProductos()      # Limpia los campos de entrada
-                self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza la lista de datos
-                self.cargarDatosEnTablaEnHilo()  # Recarga los datos en la tabla (en un hilo)
+                # Actualizar UI
+                self.limpiarCamposProductos()
+                self.datos = self.base_de_datos.consultarDatosProductos()
+                self.cargarDatosEnTablaEnHilo()
 
-                # 7. Respalda la base de datos (como en tus otras funciones)
                 funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
                 
-                MensajeModerno(self, "Éxito", "Producto añadido correctamente.", tipo="info")
+                MensajeModerno(self, "Éxito", "Producto añadido correctamente.", tipo="éxito")
 
-            # --- NUEVO BLOQUE "except" ---
             except ValueError as ve:
-                # Captura el error de "Código duplicado" que lanzamos desde la BD
-                MensajeModerno(self, "Error de Duplicado", str(ve), tipo="error")
-                self.entrada_código.focus() # Pone el foco en el campo incorrecto
+                MensajeModerno(self, "Error de datos", str(ve), tipo="error")
+                self.entrada_código.focus()
 
-            except Exception as e: # Captura todos los demás errores
+            except Exception as e:
                 MensajeModerno(self, "Error de Base de Datos", 
                               f"No se pudo añadir el producto: {str(e)}", tipo="error")
 
+    def manejarCambioUmbral(self, event=None):
+        """
+        Habilita o deshabilita el campo 'Ventas Acumuladas' dependiendo 
+        de si hay contenido en 'Umbral de Ventas'.
+        """
+        contenido_umbral = self.umbral.get().strip()
+        
+        if contenido_umbral:
+            # Si hay texto, habilitamos ventas acumuladas
+            self.entrada_ventas_acumuladas.config(state='normal')
+        else:
+            # Si está vacío, borramos el contenido y deshabilitamos
+            self.ventas_acumuladas.set("")
+            self.entrada_ventas_acumuladas.config(state='disabled')
+            
     def esUnProductoVálido(self):
         producto_válido = True  # Asume inicialmente que los datos son válidos
         
         código = self.código.get().strip()
         nombre = self.nombre.get().strip()
         precio_str = self.precio.get().strip()
-        stock_str = self.stock.get().strip()
-        stock_min_str = self.stock_mínimo.get().strip()
 
         # 1. Verifica que se haya ingresado un código
         if código == '':
@@ -1558,18 +1684,6 @@ class Aplicación(tk.Tk):
         if precio_str == '':
             MensajeModerno(self,'¡Atención!', 'Debe ingresar un precio para el producto.', tipo="advertencia")
             self.entrada_precio.focus()
-            producto_válido = False
-
-        # 4. Verifica que se haya ingresado un stock actual (solo si lo anterior es válido)
-        if stock_str == '':
-            MensajeModerno(self,'¡Atención!', 'Debe ingresar el stock actual.', tipo="advertencia")
-            self.entrada_stock.focus()
-            producto_válido = False
-
-        # 5. Verifica que se haya ingresado un stock mínimo (solo si lo anterior es válido)
-        if stock_min_str == '':
-            MensajeModerno(self,'¡Atención!', 'Debe ingresar el stock mínimo.', tipo="advertencia")
-            self.entrada_stock_mínimo.focus()
             producto_válido = False
 
         # Devuelve el resultado final de todas las validaciones
@@ -1636,9 +1750,9 @@ class Aplicación(tk.Tk):
 
         # --- 4. Definir Anchos de Columna ---
         self.tabla_carrito.column("código", anchor='w', width=200, stretch=tk.NO)
-        self.tabla_carrito.column("nombre", anchor='w', width=290) # Columna expandible
-        self.tabla_carrito.column("precio_unitario", anchor='e', width=100, stretch=tk.NO)
-        self.tabla_carrito.column("cantidad", anchor='center', width=60, stretch=tk.NO)
+        self.tabla_carrito.column("nombre", anchor='w', width=250) # Columna expandible
+        self.tabla_carrito.column("precio_unitario", anchor='e', width=110, stretch=tk.NO)
+        self.tabla_carrito.column("cantidad", anchor='center', width=90, stretch=tk.NO)
         self.tabla_carrito.column("subtotal", anchor='e', width=110, stretch=tk.NO)
         
         # --- 5. Scrollbars para la tabla de carrito ---
@@ -1661,48 +1775,52 @@ class Aplicación(tk.Tk):
         self.barra_desplazamiento_horizontal_carrito.grid(row=2, column=2, columnspan=2, sticky='we')
 
     def actualizarTablaStockAlerta(self):
-        """
-        Limpia la tabla de stock en alerta y la recarga con productos...
-        """
         funciones_útiles.borrarTodasLasFilas(self.tabla_stock_alerta)
         
-        # --- Configurar tags modernos ---
+        # Tags
         self.tabla_stock_alerta.tag_configure('impar', background=COLOR_BLANCO)
         self.tabla_stock_alerta.tag_configure('par', background=COLOR_FONDO_APP)
-        self.tabla_stock_alerta.tag_configure('alerta', foreground='red', background='#FFF0F0') # Rojo suave de fondo para alertas
-        
-        if not self.datos:
-            return
+        # Rojo si ventas >= umbral (Meta cumplida / Alerta)
+        self.tabla_stock_alerta.tag_configure('alerta', foreground='red', background='#FFF0F0') 
 
-        stock_en_alerta = self.base_de_datos.consultarProductosPorPorcentajeStock()
+        datos_alerta = self.base_de_datos.consultarProductosPorAlertaVentas()
         
-        if stock_en_alerta:
-            # Usamos enumerate para saber si es par o impar
-            for i, producto_alerta in enumerate(stock_en_alerta):
+        if datos_alerta:
+            for prod in datos_alerta:
+                # prod: [cod, nom]
                 
-                tag_fila = 'par' if i % 2 == 0 else 'impar'
-                
-                # Prioridad: Si es alerta, usa el tag 'alerta', si no, usa el color alterno
-                if int(producto_alerta[STOCK_ACTUAL_TABLA_ALERTA]) <= int(producto_alerta[STOCK_MÍNIMO_TABLA_ALERTA]):
-                    self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta, tags=('alerta',))
-                else:
-                    self.tabla_stock_alerta.insert('', tk.END, values=producto_alerta, tags=(tag_fila,))
+                self.tabla_stock_alerta.insert('', tk.END, values=prod, tags=('alerta',))
 
     def cargarTablaProducto(self):
         """
         Carga los datos de los productos alternando colores de fila.
+        Si ventas_acumuladas o umbral_ventas son None, muestra cadena vacía.
         """
         # Configurar los tags de color en la tabla
         self.tabla_productos.tag_configure('impar', background=COLOR_BLANCO)
         self.tabla_productos.tag_configure('par', background=COLOR_FONDO_APP)
 
         if self.datos:
-            for i, producto in enumerate(self.datos):
+            for i, fila_tupla in enumerate(self.datos):
+                # Convertimos la tupla a lista para poder modificarla
+                producto = list(fila_tupla)
+
+                # El orden es: [0]código, [1]nombre, [2]precio, [3]ventas, [4]umbral, ...
+                
+                # Si ventas_acumuladas es None, poner ""
+                if producto[3] is None:
+                    producto[3] = ""
+                
+                # Si umbral_ventas es None, poner ""
+                if producto[4] is None:
+                    producto[4] = ""
+
                 # Determinar si la fila es par o impar
                 tag_fila = 'par' if i % 2 == 0 else 'impar'
                 
-                # Insertar con el tag correspondiente
+                # Insertar la lista modificada
                 self.tabla_productos.insert('', tk.END, values=producto, tags=(tag_fila,))
+            
             self.aplicarOrdenGuardado(self.tabla_productos, 'productos')
 
     def eliminarVenta(self):
@@ -1710,73 +1828,60 @@ class Aplicación(tk.Tk):
         Elimina la VENTA seleccionada de la tabla_ventas (historial).
         
         1. Pide confirmación para eliminar la venta.
-        2. Si se elimina, pregunta si se desea REPONER el stock de los productos.
-        3. Si responde SÍ: actualiza el stock.
+        2. Si se elimina, pregunta si se desea DESCONTAR las ventas acumuladas.
+        3. Si responde SÍ: resta la cantidad a 'ventas_acumuladas'.
         4. Finalmente elimina la venta de la BD y refresca la interfaz.
         """
         
-        # 1. Verificar que una VENTA esté seleccionada (tabla izquierda)
+        # 1. Verificar selección
         item_seleccionado = self.tabla_ventas.focus()
         if not item_seleccionado:
-            MensajeModerno(self,"Atención", 
-                                   "Debe seleccionar una Venta de la tabla de la izquierda (Historial) para poder eliminarla.",
-                                   tipo="advertencia")
-            
+            MensajeModerno(self, "Atención", 
+                           "Debe seleccionar una Venta de la tabla de la izquierda (Historial) para poder eliminarla.",
+                           tipo="advertencia")
             return
 
-        # 2. Pedir confirmación DE ELIMINACIÓN
-        confirmación = MensajeModerno(self, "Confirmar Eliminación", 
+        # 2. Pedir confirmación
+        confirmacion = MensajeModerno(self, "Confirmar Eliminación", 
                                         "¿Está seguro de que desea eliminar esta VENTA permanentemente?\n"
                                         "Esta acción no se puede deshacer.", tipo="pregunta")
-        respuesta_eliminar = confirmación.resultado
         
-        if respuesta_eliminar:
+        if confirmacion.resultado:
             try:
-                # 3. Obtener el ID de la Venta
+                # 3. Obtener ID
                 datos = self.tabla_ventas.item(item_seleccionado)['values']
-                id_venta = datos[0] # El ID es la primera columna
+                id_venta = datos[0] 
                 
-                # 4. Consultar los detalles (necesarios para saber qué reponer)
-                # (Devuelve: codigo, nombre, precio_unitario, cantidad, subtotal)
+                # 4. Consultar detalles
                 detalles = self.base_de_datos.consultarDetalleVenta(id_venta)
                 
                 if detalles:
-                    # 5. Preguntar si se desea REPONER STOCK
-                    confirmación_reponer = MensajeModerno(self, "Reponer Stock", 
-                                                            "¿Desea devolver los productos al stock?\n\n"
-                                                            "Sí: Se sumará la cantidad al stock actual.\n"
+                    # 5. Preguntar si se desea DESCONTAR DEL ACUMULADO
+                    confirmacion_revertir = MensajeModerno(self, "Revertir Acumulado", 
+                                                            "¿Desea descontar estas ventas del acumulado de los productos?\n\n"
+                                                            "Sí: Se restará la cantidad a 'Ventas Acumuladas'.\n"
                                                             "No: Solo se borrará el registro de la venta.", tipo="pregunta")
-                    respuesta_reponer = confirmación_reponer.resultado
                     
-                    if respuesta_reponer:
-                        # Hacer el bucle para reponer uno por uno
+                    if confirmacion_revertir.resultado:
                         for item in detalles:
                             codigo = item[0]
                             cantidad = int(item[3])
-                            # Llama a la función existente en tu base_de_datos.py
-                            # Espera: [cantidad_repuesta, codigo_producto]
-                            self.base_de_datos.reponerStockProducto([cantidad, codigo])
+                            self.base_de_datos.actualizarVentasProducto([-cantidad, codigo])
 
-                # 6. Llamar a la BD para eliminar la VENTA (Siempre se hace)
-                # (ON DELETE CASCADE borrará los detalles automáticamente)
+                # 6. Eliminar Venta
                 self.base_de_datos.eliminarVentaPorID([id_venta])
                 
-                # 7. Limpieza de la interfaz
-                # Si el carrito estaba mostrando esa venta, lo vaciamos visualmente
+                # 7. Limpiar UI
                 funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
-                self.etiqueta_valor_total_produdcto.config(text="0.00")
+                self.etiqueta_valor_total_producto.config(text="0.00")
                 
-                # 8. Refrescar la tabla de ventas
+                # 8. Refrescar tablas
                 self.actualizarTablaVentasEnHilo()
-                
-                # 9. Refrescar la tabla de productos (por si el stock cambió)
                 self.datos = self.base_de_datos.consultarDatosProductos()
+                self.cargarDatosEnTablaEnHilo() 
                 
-                self.cargarDatosEnTablaEnHilo() # Actualiza productos y alertas de stock
-                
-                MensajeModerno(self, "Éxito", "Venta eliminada correctamente.", tipo="info")
+                MensajeModerno(self, "Éxito", "Venta eliminada correctamente.", tipo="exito") # Corregido tipo='exito'
 
-                # Resetear controles
                 self.botón_eliminar_venta.config(state='disabled')
                 self.tabla_ventas.selection_set(())
                 
@@ -1831,6 +1936,194 @@ class Aplicación(tk.Tk):
         # Inicia la ejecución del hilo.
         hilo.start()
     
+    def crear_label_frame_medios_pago(self):
+        """
+        Crea el LabelFrame para gestionar los Medios de Pago en la pestaña 'Ajustes'.
+        Incluye una lista de medios existentes, un campo para nuevos, un check para facturar y botones.
+        """
+        
+        # 1. Crear la ETIQUETA del título (estilo moderno)
+        self.etiqueta_título_medios = ttk.Label(self.página_cuaderno_ajustes, 
+                                                text=TÍTULO_LABELFRAME_MEDIOS_PAGO, 
+                                                font=FUENTE_TÍTULO_PRODUCTOS)
+        
+        # 2. Crear el LabelFrame
+        self.labelframe_medios_pago = ttk.LabelFrame(self.página_cuaderno_ajustes, 
+                                                     labelwidget=self.etiqueta_título_medios)
+        
+        # Posicionarlo arriba a la izquierda (Col 0, Fila 0)
+        self.labelframe_medios_pago.grid(column=0, row=0, 
+                                         padx=10, pady=10, 
+                                         sticky="nw")
+
+        # --- Fila 0: Lista de Existentes ---
+        self.lbl_medios_existentes = ttk.Label(self.labelframe_medios_pago, 
+                                               text=ETIQUETA_EXISTENTES_MEDIOS)
+        self.lbl_medios_existentes.grid(column=0, row=0, padx=5, pady=5, sticky="nw")
+        
+        self.listbox_medios = tk.Listbox(self.labelframe_medios_pago, height=7, width=30, 
+                                         font=('Segoe UI', 10), bd=1, relief="solid",
+                                         selectmode=tk.MULTIPLE)
+        self.listbox_medios.grid(column=1, row=0, padx=(5, 0), pady=5, sticky="ew")
+
+        # Vinculamos al nuevo manejador inteligente
+        self.listbox_medios.bind('<<ListboxSelect>>', self.manejarSelecciónMedio)
+        
+        self.scroll_medios = ttk.Scrollbar(self.labelframe_medios_pago, 
+                                           orient="vertical", 
+                                           command=self.listbox_medios.yview)
+        self.scroll_medios.grid(column=2, row=0, sticky="ns", pady=5)
+        self.listbox_medios.config(yscrollcommand=self.scroll_medios.set)
+
+        # --- Fila 1: Nuevo Medio ---
+        self.lbl_nuevo_medio = ttk.Label(self.labelframe_medios_pago, 
+                                         text=ETIQUETA_NUEVO_MEDIO)
+        self.lbl_nuevo_medio.grid(column=0, row=1, padx=5, pady=5, sticky="w")
+        
+        self.var_nuevo_medio = tk.StringVar()
+        self.entry_nuevo_medio = ttk.Entry(self.labelframe_medios_pago, 
+                                           textvariable=self.var_nuevo_medio,
+                                           width=30)
+        self.entry_nuevo_medio.grid(column=1, row=1, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        self.entry_nuevo_medio.bind(EVENTO_TECLA_PRESIONADA, 
+            lambda event: self.limitar_longitud_entrada(
+                event, 
+                self.entry_nuevo_medio, 
+                self.var_nuevo_medio, 
+                MÁX_CARACTERES_NOMBRE_MEDIO_PAGO, 
+                f"El nombre del medio de pago no puede superar los {MÁX_CARACTERES_NOMBRE_MEDIO_PAGO} caracteres."
+            )
+        )
+
+        # --- Fila 2: Checkbutton "Facturar" (Estilo Moderno) ---
+        
+        # 1. Etiqueta de texto "Facturar:"
+        self.lbl_facturar = ttk.Label(self.labelframe_medios_pago, text="Facturar:")
+        self.lbl_facturar.grid(column=0, row=2, padx=5, pady=5, sticky="e")
+
+        # 2. Variable de control
+        self.var_facturar_medio = tk.BooleanVar(value=True) # Empezar activado (como en tu imagen)
+
+        # 3. Función para alternar el diseño
+        def toggle_facturar(event=None):
+            estado = not self.var_facturar_medio.get()
+            self.var_facturar_medio.set(estado)
+            actualizar_icono()
+
+        def actualizar_icono():
+            if not self.var_facturar_medio.get():
+                # ACTIVADO: Fondo azul con check blanco (Simulado con caracteres)
+                # Usamos "☑" (BALLOT BOX WITH CHECK) o "✓" con color
+                self.lbl_icono_facturar.config(text="☑", foreground=COLOR_ACENTO, font=('Segoe UI', 14))
+            else:
+                # DESACTIVADO: Caja vacía
+                self.lbl_icono_facturar.config(text="☐", foreground="#555", font=('Segoe UI', 14))
+
+        # 4. El Widget "Checkbox" (es un Label interactivo)
+        self.lbl_icono_facturar = ttk.Label(self.labelframe_medios_pago, cursor="hand2")
+        self.lbl_icono_facturar.grid(column=1, row=2, padx=5, pady=5, sticky="w")
+        
+        # Configuración inicial
+        actualizar_icono()
+        
+        # Evento de clic
+        self.lbl_icono_facturar.bind("<Button-1>", toggle_facturar)
+
+        # --- Fila 3: Botones (Movidos una fila abajo) ---
+        
+        self.btn_agregar_medio = ttk.Button(self.labelframe_medios_pago, 
+                                            text=BOTÓN_AGREGAR_MEDIO,
+                                            command=self.agregarMedioPago)
+        self.btn_agregar_medio.grid(column=0, row=3, padx=5, pady=10, sticky="ew")
+
+        # Botón Editar (Fila 4, Columna 0) - DEBAJO DE AGREGAR
+        self.btn_editar_medio = ttk.Button(self.labelframe_medios_pago, 
+                                            text=BOTÓN_EDITAR_MEDIO)
+                                            # command=self.editarMedioPago) # A implementar
+        self.btn_editar_medio.grid(column=0, row=4, padx=5, pady=(0, 10), sticky="ew")
+        
+        self.btn_eliminar_medio = ttk.Button(self.labelframe_medios_pago, 
+                                             text=BOTÓN_ELIMINAR_MEDIO,
+                                             command=self.eliminarMedioPago)
+        self.btn_eliminar_medio.grid(column=1, row=3, columnspan=2, padx=5, pady=10, sticky="ew")
+
+        # Botón Limpiar (Fila 4, Columna 1-2) - DEBAJO DE ELIMINAR
+        self.btn_limpiar_medio = ttk.Button(self.labelframe_medios_pago, 
+                                            text=BOTÓN_LIMPIAR_MEDIO,
+                                            command=self.limpiarCamposMedioPago)
+        self.btn_limpiar_medio.grid(column=1, row=4, columnspan=2, padx=5, pady=(0, 10), sticky="ew")
+    
+    def manejarSelecciónMedio(self, event):
+        """
+        Cuenta cuántos ítems hay seleccionados y ajusta la interfaz.
+        
+        - 0 seleccionados: Modo "Agregar nuevo" (Todo limpio y habilitado).
+        - 1 seleccionado: Modo "Edición" (Carga datos, habilita Editar/Eliminar).
+        - >1 seleccionados: Modo "Eliminación Múltiple" (Bloquea edición, solo permite Eliminar).
+        """
+        seleccion = self.listbox_medios.curselection()
+        cantidad = len(seleccion)
+
+        if cantidad == 0:
+            # --- NADA SELECCIONADO: Modo Agregar ---
+            self.var_nuevo_medio.set("")                # Limpiar texto
+            self.var_facturar_medio.set(False)          # Destildar
+            self.actualizarIconoFacturar()
+            
+            # Habilitar controles de carga
+            self.entry_nuevo_medio.config(state='normal')
+            self.lbl_icono_facturar.bind("<Button-1>", self.toggleFacturar)
+            self.lbl_icono_facturar.config(cursor="hand2", foreground="#555") # Color normal
+            
+            # Botones
+            self.btn_agregar_medio.config(state='normal')
+            self.btn_editar_medio.config(state='disabled')  # No se puede editar la nada
+            self.btn_eliminar_medio.config(state='disabled')# No se puede eliminar la nada
+            self.btn_limpiar_medio.config(state='normal')   # Permitimos limpiar
+
+        elif cantidad == 1:
+            # --- UN SOLO ÍTEM: Modo Edición ---
+            
+            # Cargar datos del único seleccionado
+            nombre_medio = self.listbox_medios.get(seleccion[0])
+            self.var_nuevo_medio.set(nombre_medio)
+            
+            # Consultar si factura
+            datos = self.base_de_datos.obtenerDetalleMedioPago(nombre_medio)
+            if datos:
+                self.var_facturar_medio.set(bool(datos[0]))
+                self.actualizarIconoFacturar()
+
+            # Habilitar todo
+            self.entry_nuevo_medio.config(state='normal')
+            self.lbl_icono_facturar.bind("<Button-1>", self.toggleFacturar)
+            self.lbl_icono_facturar.config(cursor="hand2")
+            
+            # Botones
+            self.btn_agregar_medio.config(state='disabled') # Bloqueamos agregar para evitar duplicados por error
+            self.btn_editar_medio.config(state='normal')
+            self.btn_eliminar_medio.config(state='normal')
+            self.btn_limpiar_medio.config(state='normal')
+
+        else:
+            # --- MÚLTIPLES ÍTEMS: Modo Borrado Masivo ---
+            
+            # Limpiar visualmente el formulario para no confundir
+            self.var_nuevo_medio.set("")
+            self.lbl_icono_facturar.config(text="☐", foreground="gray") # Gris indicando deshabilitado
+
+            # Bloquear controles de edición
+            self.entry_nuevo_medio.config(state='disabled')
+            self.lbl_icono_facturar.unbind("<Button-1>")
+            self.lbl_icono_facturar.config(cursor="arrow")
+            
+            # Botones
+            self.btn_agregar_medio.config(state='disabled')
+            self.btn_editar_medio.config(state='disabled')
+            self.btn_limpiar_medio.config(state='disabled') # Bloqueamos limpiar para obligar a deseleccionar manualmente o borrar
+            self.btn_eliminar_medio.config(state='normal')  # Solo permitimos eliminar
+
     def actualizarTablaVentasEnHilo(self):
         def cargar_datos():
             try:
@@ -1849,6 +2142,67 @@ class Aplicación(tk.Tk):
         self.hilos.append(hilo)
         # Inicia la ejecución del hilo.
         hilo.start()
+    
+    def actualizarListaMediosEnHilo(self):
+        """
+        Inicia un hilo secundario para recargar la lista de Medios de Pago
+        sin congelar la interfaz gráfica.
+        """
+        def cargar_datos():
+            try:
+                # Programa la actualización de la UI en el hilo principal
+                self.after(0, self.actualizarListaMedios) 
+            except Exception as e:
+                print(f"Error al cargar medios de pago: {e}")
+
+        # Crea y lanza el hilo
+        hilo = threading.Thread(target=cargar_datos, daemon=True)
+        self.hilos.append(hilo)
+        hilo.start()
+    
+    def actualizarListaMedios(self):
+        """
+        Consulta la base de datos y rellena la Listbox de Medios de Pago.
+        """
+        try:
+            # 1. Limpiar la lista actual
+            self.listbox_medios.delete(0, tk.END)
+            
+            # 2. Consultar DB
+            medios = self.base_de_datos.consultarMediosPago()
+            
+            # 3. Insertar nuevos datos
+            if medios:
+                for medio in medios:
+                    # medio es una tupla (nombre,), insertamos el primer elemento
+                    self.listbox_medios.insert(tk.END, medio[0])
+                    
+        except Exception as e:
+            MensajeModerno(self, "Error", f"No se pudo actualizar la lista de medios: {e}", tipo="error")
+    
+    def cambiarEstadoControlesMedios(self, estado):
+        """
+        Habilita o deshabilita los controles del formulario de Medios de Pago.
+        estado: 'normal' o 'disabled'
+        """
+        # 1. Caja de texto
+        self.entry_nuevo_medio.config(state=estado)
+        
+        # 2. Botones (Agregar, Editar, Limpiar)
+        self.btn_agregar_medio.config(state=estado)
+        self.btn_editar_medio.config(state=estado)
+        self.btn_limpiar_medio.config(state=estado)
+        
+        # 3. Checkbox (Simulado con Label)
+        if estado == 'disabled':
+            # Desvincular evento y poner en gris
+            self.lbl_icono_facturar.unbind("<Button-1>")
+            self.lbl_icono_facturar.config(cursor="arrow", foreground="gray")
+        else:
+            # Restaurar evento y color correcto
+            self.lbl_icono_facturar.bind("<Button-1>", self.toggleFacturar)
+            self.lbl_icono_facturar.config(cursor="hand2")
+            self.actualizarIconoFacturar() # Restaura el color verde/rojo según el valor
 
     def finalizarVentaEnHilo(self):
         def cargar_datos_ventas():
@@ -1873,16 +2227,6 @@ class Aplicación(tk.Tk):
         """
         Carga los datos de un producto seleccionado en la tabla (tabla_productos)
         y los muestra en los widgets del 'labelframe_productos'.
-
-        Esta función se activa cuando el usuario hace clic en una fila de la
-        tabla de productos. Realiza las siguientes acciones:
-
-        1. Verifica si hay un elemento seleccionado.
-        2. Obtiene los datos del elemento seleccionado.
-        3. Limpia todos los campos de entrada del labelframe de productos.
-        4. Carga los datos de la fila en los widgets correspondientes (Código, Nombre, etc.).
-        5. Habilita los botones "Editar", "Eliminar" y "Limpiar".
-        6. Actualiza el contador de caracteres de la descripción.
         """
         
         # 1. Verifica si hay algún elemento seleccionado en la tabla de productos.
@@ -1893,8 +2237,6 @@ class Aplicación(tk.Tk):
             
             if item_seleccionado:
                 # 2. Obtiene los valores de la fila seleccionada.
-                # El orden de 'datos' coincide con las columnas de 'crearTablaConProductos':
-                # 0: código, 1: nombre, 2: precio, 3: stock_actual, 4: stock_mínimo, 5: descripción
                 datos = self.tabla_productos.item(item_seleccionado)['values']
 
                 # 3. Limpia la descripción antes de cargar nuevos datos.
@@ -1904,9 +2246,25 @@ class Aplicación(tk.Tk):
                 self.código.set(datos[0])
                 self.nombre.set(datos[1])
                 self.precio.set(datos[2])
-                self.stock.set(datos[3])
-                self.stock_mínimo.set(datos[4])
+                self.umbral.set(datos[4])
+                self.ventas_acumuladas.set(datos[3])
                 self.texto_desplazado.insert('1.0', datos[5])
+                self.manejarCambioUmbral()
+
+                # --- NUEVO CÓDIGO: Deseleccionar y mover cursor al final ---
+                
+                # Lista de todos los widgets Entry que acabamos de llenar
+                entradas = [self.entrada_código, self.entrada_nombre, self.entrada_precio, 
+                            self.entrada_umbral, self.entrada_ventas_acumuladas]
+                
+                for entrada in entradas:
+                    entrada.selection_clear()   # Quita cualquier selección de texto
+                    entrada.icursor(tk.END)     # Mueve el cursor al final del texto
+
+                # Para el ScrolledText (Descripción)
+                self.texto_desplazado.tag_remove("sel", "1.0", "end") # Quita selección
+                self.texto_desplazado.mark_set("insert", "end")       # Mueve cursor al final
+                # -----------------------------------------------------------
 
                 # 6. Calcula y muestra los caracteres restantes para la descripción.
                 descripción_actual = datos[5]
@@ -1939,8 +2297,8 @@ class Aplicación(tk.Tk):
             valores.append(self.nombre.get().strip()) # 1: nombre
             valores.append(self.texto_desplazado.get("1.0", tk.END).strip()) # 2: desc
             valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0) # 3: precio
-            valores.append(int(self.stock.get().strip()) if self.stock.get().strip() else 0) # 4: stock
-            valores.append(int(self.stock_mínimo.get().strip()) if self.stock_mínimo.get().strip() else 0) # 5: stock_min
+            valores.append(int(self.umbral.get().strip()) if self.umbral.get().strip() else 0) # 4: stock
+            valores.append(int(self.ventas_acumuladas.get().strip()) if self.ventas_acumuladas.get().strip() else 0) # 5: stock_min
             valores.append(datos[-1])  # 6: Agrega el id_producto (para el WHERE)
 
             # 3. Intenta modificar, confiando en la BD para capturar duplicados
@@ -2024,17 +2382,65 @@ class Aplicación(tk.Tk):
         else:
             MensajeModerno(self,"Error", "Debe seleccionar un producto", tipo="advertencia")
     
+    def eliminarMedioPago(self):
+        """
+        Elimina (lógicamente) los medios de pago seleccionados en la lista.
+        """
+        # 1. Obtener índices seleccionados
+        indices = self.listbox_medios.curselection()
+        
+        # 2. Validar si hay selección
+        if not indices:
+            MensajeModerno(self, "Atención", "Debe seleccionar al menos un medio de pago para eliminar.", tipo="advertencia")
+            return
+
+        # 3. Confirmar acción
+        confirmacion = MensajeModerno(self, "Confirmar Eliminación", 
+                                      "¿Está seguro de eliminar los medios seleccionados?", tipo="pregunta")
+        if not confirmacion.resultado:
+            return
+
+        try:
+            # 4. Iterar y eliminar
+            errores = []
+            eliminados_count = 0
+            
+            # Recorremos en reverso para evitar problemas si borráramos de la lista visual uno a uno,
+            # aunque aquí solo leemos el nombre.
+            for index in indices:
+                nombre_medio = self.listbox_medios.get(index)
+                try:
+                    self.base_de_datos.eliminarMedioPagoLogico(nombre_medio)
+                    eliminados_count += 1
+                except Exception as e:
+                    errores.append(f"{nombre_medio}: {str(e)}")
+
+            # 5. Actualizar UI
+            self.actualizarListaMediosEnHilo()
+            self.limpiarCamposMedioPago() # Limpia selección y campos
+
+            # 6. Reportar resultado
+            if not errores:
+                MensajeModerno(self, "Éxito", f"Se eliminaron {eliminados_count} medios de pago correctamente.", tipo="éxito")
+            else:
+                msg_error = "Hubo problemas con algunos medios:\n" + "\n".join(errores)
+                MensajeModerno(self, "Advertencia", msg_error, tipo="advertencia")
+
+        except Exception as e:
+            MensajeModerno(self, "Error Crítico", f"Error al procesar la eliminación: {e}", tipo="error")
+
     def limpiarCamposProductos(self):
         self.texto_desplazado.delete('1.0', tk.END)  # Borra el texto de la descripción.
         self.precio.set('')  # Limpia el campo de importe.
-        self.entrada_stock.delete(0, "end")
-        self.entrada_stock_mínimo.delete(0, "end")
+        self.entrada_umbral.delete(0, "end")
+        self.entrada_ventas_acumuladas.delete(0, "end")
         self.entrada_código.delete(0, "end")
         self.entrada_nombre.delete(0, "end")
         self.tabla_productos.selection_set(()) # Deselecciona la tabla
         self.etiqueta_contador_caracteres.config(text=str(MÁX_CAR_DESCRIP)) # actualiza la cantidad de caracteres restantes
         # cambia a verde el color de la etiqueta de los caracteres restantes
         self.etiqueta_contador_caracteres.configure(style="verde.TLabel")
+        self.entrada_ventas_acumuladas.config(state='disabled')
 
     def actualizar_contador(self, longitud_antes):
         """
@@ -2284,10 +2690,22 @@ class Aplicación(tk.Tk):
         # Ejecuta la espera de los hilos en un *NUEVO* hilo
         threading.Thread(target=esperar_hilos, daemon=True).start()
     
+    def actualizarIconoFacturar(self):
+        """Actualiza visualmente el Label que simula un Checkbox."""
+        if self.var_facturar_medio.get():
+            self.lbl_icono_facturar.config(text="☑", foreground=COLOR_ACENTO, font=('Segoe UI', 14))
+        else:
+            self.lbl_icono_facturar.config(text="☐", foreground="#555", font=('Segoe UI', 14))
+
+    def toggleFacturar(self, event=None):
+        """Cambia el estado del Checkbox al hacer clic."""
+        self.var_facturar_medio.set(not self.var_facturar_medio.get())
+        self.actualizarIconoFacturar()
+    
     def ordenarColumna(self, tree, col, descendente, nombre_tabla=None):
         """
-        Ordena una tabla (tree) por una columna (col) y guarda el estado.
-        Reaplica el color de filas (cebra) después de ordenar.
+        Ordena una tabla (tree) por una columna (col).
+        Maneja Números (Precios), Fechas y Texto.
         """
         # 1. Guardar el estado actual
         if nombre_tabla:
@@ -2298,26 +2716,32 @@ class Aplicación(tk.Tk):
 
         # 3. Intentar ordenar
         try:
-            # Eliminar símbolos de moneda ($)
+            # A. Intento numérico (para Precios, ID, Stock)
+            # Quitamos '$' y espacios
             datos.sort(key=lambda t: float(t[0].replace('$', '').strip()), reverse=descendente)
+        
         except ValueError:
-            # Orden alfabético
-            datos.sort(key=lambda t: t[0].lower(), reverse=descendente)
+            try:
+                # B. Intento de FECHA (para la columna "Fecha y hora")
+                # Usamos el mismo formato que definiste en funciones_útiles
+                formato = funciones_útiles.FORMATO_PREFERIDO_HORA_Y_FECHA
+                datos.sort(key=lambda t: datetime.strptime(t[0], formato), reverse=descendente)
+            
+            except ValueError:
+                # C. Fallback: Orden alfabético (para Nombres, Códigos, etc.)
+                datos.sort(key=lambda t: t[0].lower(), reverse=descendente)
 
         # 4. Mover los ítems y REAPLICAR TAGS DE COLOR
         for index, (val, k) in enumerate(datos):
             tree.move(k, '', index)
             
-            # --- NUEVO: Recalcular par/impar ---
             tag_fila = 'par' if index % 2 == 0 else 'impar'
             
-            # Mantenemos el tag 'alerta' si ya lo tenía (para la tabla de stock)
+            # Mantenemos el tag 'alerta' si ya lo tenía
             tags_actuales = list(tree.item(k, 'tags'))
             if 'alerta' in tags_actuales:
-                # Si es alerta, forzamos 'alerta' (que tiene fondo rojo)
                 tree.item(k, tags=('alerta',))
             else:
-                # Si no, aplicamos el color alterno
                 tree.item(k, tags=(tag_fila,))
 
         # 5. Actualizar el encabezado
