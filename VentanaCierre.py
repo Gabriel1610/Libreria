@@ -3,38 +3,54 @@ import tkinter as tk
 
 class VentanaCierre(tk.Toplevel):
     
-    def __init__(self, parent):
+    def __init__(self, parent, mensaje="Cerrando la aplicación. Por favor, espere..."):
         super().__init__(parent)
-        self.withdraw()  # Ocultar ventana al crearla
-        self.title("Cerrando...")
-        self.geometry("300x100")  # Tamaño de la ventana
-        self.protocol("WM_DELETE_WINDOW", self.do_nothing) #Evitar que se cierre
-
-        self.label = ttk.Label(self, text="Cerrando la aplicación.  Por favor, espere...", wraplength=280)
-        self.label.pack(pady=20)
-
-        self.progress = ttk.Progressbar(self, mode="indeterminate")  # Barra de progreso indeterminada
-        self.progress.pack(pady=10)
-        self.progress.start(5)  # Inicia la animación (10 ms entre actualizaciones)
-
-        # --- CÓDIGO NUEVO PARA CENTRAR ---
-        self.update_idletasks()  # Actualiza cálculos geométricos
         
-        # Calcular posición central
-        x = (self.winfo_screenwidth() // 2) - (300 // 2)
-        y = (self.winfo_screenheight() // 2) - (100 // 2)
+        # 1. Configuración básica de la ventana (Oculta al inicio)
+        self.withdraw() 
+        self.title("Procesando...")
+        self.protocol("WM_DELETE_WINDOW", self.do_nothing) # Evitar cierre manual
+        self.resizable(False, False)
+        self.configure(bg="white")
+
+        # 2. Layout
+        frame_main = tk.Frame(self, bg="white", padx=20, pady=20)
+        frame_main.pack(expand=True, fill="both")
+
+        # 3. Etiqueta de Mensaje
+        self.label = tk.Label(frame_main, text=mensaje, 
+                              font=("Segoe UI", 10), bg="white", wraplength=280)
+        self.label.pack(pady=(0, 15))
+
+        # 4. Barra de Progreso (Animación)
+        self.progress = ttk.Progressbar(frame_main, mode="indeterminate", length=250)
+        self.progress.pack(pady=(0, 10))
+        self.progress.start(10) # Velocidad de la animación (ms)
+
+        # 5. Centrar la ventana respecto a la aplicación principal
+        self.update_idletasks()
+        ancho = self.winfo_reqwidth()
+        alto = self.winfo_reqheight()
         
-        # Aplicar geometría (centrado)
-        self.geometry(f"+{x}+{y}")
-        # ---------------------------------
-        self.resizable(0,0)
+        x_padre = parent.winfo_rootx()
+        y_padre = parent.winfo_rooty()
+        ancho_padre = parent.winfo_width()
+        alto_padre = parent.winfo_height()
+        
+        x = x_padre + (ancho_padre // 2) - (ancho // 2)
+        y = y_padre + (alto_padre // 2) - (alto // 2)
+        
+        self.geometry(f"{ancho}x{alto}+{x}+{y}")
+
+        # 6. Mostrar y bloquear
+        self.deiconify()
+        self.transient(parent)
         self.grab_set()
-        self.deiconify()  # Mostrar la ventana ya centrada
 
     def do_nothing(self):
-        #No permite que se cierre la ventana de díalogo
+        # No permite cerrar la ventana con la X
         pass
 
     def cerrar(self):
-        self.progress.stop()  # Detiene la animación
+        self.progress.stop() # Detener animación
         self.destroy()

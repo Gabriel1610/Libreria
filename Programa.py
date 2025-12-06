@@ -15,6 +15,8 @@ from datetime import datetime
 import funciones_útiles
 import validación_tipo_de_datos
 from MensajeModerno import MensajeModerno
+from tkinter import filedialog # Para elegir dónde guardar
+import pandas as pd # Para crear el Excel
 
 NOMBRE_ICONO = "librería.ico"
 TAMAÑO_MÍNIMO_COLUMNA1_CPM = 620
@@ -53,7 +55,7 @@ MÁX_DÍGITOS_PRECIO = 10
 MÁX_DECIMALES_PRECIO = 2
 
 PADX_ETIQUETA_UMBRAL_VENTAS_PRODUCTOS = 0
-PADY_ETIQUETA_UMBRAL_VENTAS_PRODUCTOS = 0  # Padding específico para la etiqueta stock
+PADY_ETIQUETA_UMBRAL_VENTAS_PRODUCTOS = 0  # Padding específico para la etiqueta umbral de ventas
 
 PADX_ENTRADA_IZQUIERDA_UMBRAL_VENTAS_PRODUCTOS = (110, 0)
 PADY_WIDGETS_GENERAL_PRODUCTOS = 5   # Padding vertical para la mayoría de widgets
@@ -63,15 +65,15 @@ ANCHO_ENTRADA_PRECIO_PRODUCTOS = 20
 
 ETIQUETA_UMBRAL_VENTAS_TEXTO_PRODUCTOS = "Umbral ventas:"
 ANCHO_ENTRADA_UMBRAL_VENTAS_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
-MÁX_UMBRAL_VENTAS_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock actual
+MÁX_UMBRAL_VENTAS_PRODUCTO = 4294967295  # Define el valor máximo permitido para el umbral de ventas
 ETIQUETA_VENTAS_ACUM_TEXTO = "Ventas acum.:"
 ANCHO_ENTRADA_VENTAS_ACUM_PRODUCTOS = 11 # Puedes ajustar este valor según sea necesario
-MÁX_VENTAS_ACUM_PRODUCTO = 4294967295  # Define el valor máximo permitido para el stock mínimo
+MÁX_VENTAS_ACUM_PRODUCTO = 4294967295  # Define el valor máximo permitido para el ventas acumuladas
 IDX_VENTAS_ACUM = 3
 IDX_UMBRAL = 4
 
 PADX_ETIQUETA_VENTAS_ACUM_PRODUCTOS = 0
-PADY_ETIQUETA_VENTAS_ACUM_PRODUCTOS = 0  # Padding específico para la etiqueta stock mínimo
+PADY_ETIQUETA_VENTAS_ACUM_PRODUCTOS = 0  # Padding específico para la etiqueta ventas acumuladas
 PADX_ENTRADA_IZQUIERDA_VENTAS_ACUM_PRODUCTOS = (110, 0)
 
 ETIQUETA_DESCRIPCIÓN_TEXTO_PRODUCTOS = "Descripción:"
@@ -129,7 +131,8 @@ BOTÓN_LIMPIAR_MEDIO = "Limpiar"
 PADX_BOTÓN_AÑADIR_PRODUCTOS = (0, 0)
 PADX_BOTÓN_EDITAR_PRODUCTOS = (100, 0)
 PADX_BOTÓN_ELIMINAR_PRODUCTOS = (200, 0)
-PADX_BOTÓN_LIMPIAR_PRODUCTOS = (300, 0)
+PADX_BOTÓN_AGREGAR_ALTER_PRODUCTOS = (300, 0)
+PADX_BOTÓN_LIMPIAR_PRODUCTOS = (210, 0)
 PADX_BOTÓN_BUSCAR_PRODUCTOS = (10, 0)
 PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS = (110, 0)
 
@@ -340,6 +343,7 @@ class Aplicación(tk.Tk):
             self.crearTablaStockAlerta()
             self.crearLabelFrameProductos() # Crea el LabelFrame para agregar productos.
             self.crearTablaConVentas()
+            self.crearLabelFrameAdministrarVentas()
             self.crearLabelFrameVentaProducto()
             self.crearTablaCarrito()
             self.actualizarTablaVentasEnHilo()
@@ -371,82 +375,6 @@ class Aplicación(tk.Tk):
         except Exception as e:
             MensajeModerno(self, "Error crítico", f"Fallo en inicialización: {str(e)}", tipo="error")
             sys.exit(1)
-    
-    def procesarVentaFinal(self, nombre_medio_pago):
-        """
-        Guarda la venta en la base de datos con el medio de pago seleccionado.
-        Si el medio de pago está configurado para facturar, emite factura con ARCA.
-        """
-        try:
-            # 1. Obtener datos necesarios
-            items_carrito_ids = self.tabla_carrito.get_children()
-            total_venta_str = self.etiqueta_valor_total_producto.cget('text')
-            total_float = float(total_venta_str)
-            fecha_actual = datetime.now()
-
-            # --- VERIFICAR SI SE DEBE FACTURAR ---
-            # Consultamos a la BD si este medio de pago tiene 'facturar = 1'
-            datos_medio = self.base_de_datos.obtenerDetalleMedioPago(nombre_medio_pago)
-            
-            se_factura = False
-            if datos_medio:
-                se_factura = bool(datos_medio[0])
-
-            # Variables para el mensaje final (por defecto vacías)
-            cae = "-"
-            nro_factura = "-"
-
-            # --- FACTURACIÓN AFIP (Condicional) ---
-            if se_factura:
-                resultado_afip = facturación.emitir_factura_b(total_float)
-                
-                if not resultado_afip['exito']:
-                    MensajeModerno(self, "Error AFIP", resultado_afip['mensaje'], tipo="error")
-                    return # Cortamos si falla la facturación obligatoria
-                    
-                cae = resultado_afip['cae']
-                nro_factura = resultado_afip['numero_factura']
-            # --------------------------------------
-
-            # 3. Registrar VENTA (Pasamos el NOMBRE directamente)
-            id_venta_generado = self.base_de_datos.registrarVenta([nombre_medio_pago, fecha_actual])
-
-            if id_venta_generado is None:
-                MensajeModerno(self, "Error", "No se pudo registrar la venta principal.", tipo="error")
-                return
-
-            # 4. Registrar DETALLES y actualizar STOCK
-            for item_id in items_carrito_ids:
-                valores = self.tabla_carrito.item(item_id, 'values')
-                código = valores[0]
-                precio_unitario = float(valores[2])
-                cantidad = int(valores[3])
-
-                self.base_de_datos.ingresarDetalleVenta([id_venta_generado, código, cantidad, precio_unitario])
-                self.base_de_datos.actualizarVentasProducto([cantidad, código])
-            
-            # 5. Limpieza y Refresco
-            funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
-            self.etiqueta_valor_total_producto.config(text="0.00")
-            self.limpiarCamposVenta()
-
-            self.actualizarTablaVentasEnHilo()
-            self.datos = self.base_de_datos.consultarDatosProductos() 
-            self.cargarDatosEnTablaEnHilo() 
-            funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
-
-            # 6. Mensaje de Éxito (Diferente según si se facturó o no)
-            mensaje_exito = f"Venta registrada correctamente.\nMedio: {nombre_medio_pago}"
-            
-            if se_factura:
-                mensaje_exito += f"\n\nFactura B N°: {nro_factura}\nCAE: {cae}"
-
-            MensajeModerno(self, "Éxito", mensaje_exito, tipo="éxito")
-
-        except ValueError as ve:
-            MensajeModerno(self, "Error en Venta", str(ve), tipo="error")
-        except Exception as e:
-            MensajeModerno(self, "Error Crítico", f"Ocurrió un error al procesar la venta: {str(e)}", tipo="error")
     
     def alCambiarPestaña(self, event):
         """
@@ -493,7 +421,9 @@ class Aplicación(tk.Tk):
             'precio',
             'ventas_acum',
             'umbral_ventas',
-            'descripción'
+            'descripción',
+            'alternativa',
+            'id'
         )
 
         self.tabla_productos = ttk.Treeview(
@@ -503,21 +433,24 @@ class Aplicación(tk.Tk):
             height=5
         )
 
+        # Configuración de Encabezados Visibles
         self.tabla_productos.heading('código', text='Código')
         self.tabla_productos.heading('nombre', text='Nombre')
         self.tabla_productos.heading('precio', text='Precio')
         self.tabla_productos.heading('ventas_acum', text='Ventas Acum.')
         self.tabla_productos.heading('umbral_ventas', text='Umbral Objetivo')
         self.tabla_productos.heading('descripción', text='Descripción', anchor='w')
+        
+        # (No configuramos heading para alternativa/id para que no se vean títulos extraños)
 
-        # Habilitar ordenamiento por clic en columnas
-        for col in columnas:
+        # Habilitar ordenamiento (solo para las columnas visibles)
+        columnas_visibles = ('código', 'nombre', 'precio', 'ventas_acum', 'umbral_ventas', 'descripción')
+        for col in columnas_visibles:
             self.tabla_productos.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_productos, c, False, 'productos'))
-
         self.tabla_productos.grid(
             row=1,
             column=0,
-            columnspan=2,
+            columnspan=3,
             sticky='ns'
         )
 
@@ -565,6 +498,18 @@ class Aplicación(tk.Tk):
             stretch=tk.NO
         )
 
+        self.tabla_productos.column(
+            "alternativa",
+            width=0,
+            stretch=tk.NO
+        )
+
+        self.tabla_productos.column(
+            "id", 
+            width=0, 
+            stretch=tk.NO
+        )
+
         self.barra_desplazamiento_vertical = ttk.Scrollbar(
             self.página_cuaderno_productos,
             orient=tk.VERTICAL,
@@ -579,12 +524,10 @@ class Aplicación(tk.Tk):
         self.tabla_productos.configure(xscrollcommand=self.barra_desplazamiento_horizontal.set)
         self.tabla_productos.configure(yscrollcommand=self.barra_desplazamiento_vertical.set)
 
-        self.barra_desplazamiento_vertical.grid(row=1, column=2, sticky='ns')
+        self.barra_desplazamiento_vertical.grid(row=1, column=3, sticky='ns')
         self.barra_desplazamiento_horizontal.grid(row=2, column=0, columnspan=2, sticky='we')
 
         self.tabla_productos.bind("<<TreeviewSelect>>", self.cargarRegistros)
-    
-    # (Fin de crearLabelFrameProductos, línea 519)
 
     def crearTablaStockAlerta(self):
         """
@@ -592,35 +535,35 @@ class Aplicación(tk.Tk):
         con bajo stock (o alerta de ventas) en la pestaña de productos.
         """
         # --- 1. Crear la Etiqueta ---
-        self.etiqueta_umbral_alerta = ttk.Label(self.página_cuaderno_productos, 
+        self.etiqueta_stock_alerta = ttk.Label(self.página_cuaderno_productos, 
                                                text="Stock en alerta", 
                                                font=FUENTE_TÍTULO_PRODUCTOS)
         
-        # Posicionar la etiqueta (Fila 3, Columna 1)
-        self.etiqueta_umbral_alerta.grid(column=1, row=3, columnspan=2, 
+        self.etiqueta_stock_alerta.grid(column=1, row=3, columnspan=2, 
                                         padx=10, pady=(0, 0), sticky="w")
 
-        # --- 2. Definir Columnas (Solo Código y Nombre) ---
+        # --- 2. Definir Columnas ---
         columnas_stock = ('código', 'nombre')
 
         self.tabla_stock_alerta = ttk.Treeview(
             self.página_cuaderno_productos,
             columns=columnas_stock,
             show='headings',
-            height=12,
-            selectmode='none' # Solo lectura
+            height=11,  # REDUCIDO DE 12 A 11
+            selectmode='extended'  # CAMBIADO DE 'none' A 'extended'
         )
 
         # 3. Configurar tags de estilo
         self.tabla_stock_alerta.tag_configure('alerta', foreground='red', background='#FFF0F0')
+        self.tabla_stock_alerta.tag_configure('impar', background=COLOR_BLANCO)
+        self.tabla_stock_alerta.tag_configure('par', background=COLOR_FONDO_APP)
 
         # --- 4. Definir Encabezados ---
         self.tabla_stock_alerta.heading('código', text='Código', anchor='w')
         self.tabla_stock_alerta.heading('nombre', text='Nombre', anchor='w')
         
-        # Habilitar ordenamiento por clic (Opcional, para consistencia)
         for col in columnas_stock:
-            self.tabla_stock_alerta.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_stock_alerta, c, False, 'nombre'))
+            self.tabla_stock_alerta.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_stock_alerta, c, False, 'stock'))
 
         # --- 5. Posicionar la Tabla ---
         self.tabla_stock_alerta.grid(
@@ -632,9 +575,7 @@ class Aplicación(tk.Tk):
         )
 
         # --- 6. Definir Anchos de Columna ---
-        # Código: Ancho fijo para que se lea bien
         self.tabla_stock_alerta.column("código", anchor='w', width=150, stretch=tk.NO)
-        # Nombre: Se estira para ocupar el resto del espacio (stretch=tk.YES)
         self.tabla_stock_alerta.column("nombre", anchor='w', width=300, stretch=tk.YES)
         
         # --- 7. Scrollbars ---
@@ -652,9 +593,66 @@ class Aplicación(tk.Tk):
         self.tabla_stock_alerta.configure(xscrollcommand=self.barra_desplazamiento_horizontal_stock.set)
         self.tabla_stock_alerta.configure(yscrollcommand=self.barra_desplazamiento_vertical_stock.set)
 
-        # Posicionar scrollbars
         self.barra_desplazamiento_vertical_stock.grid(row=4, column=3, sticky='ns')
         self.barra_desplazamiento_horizontal_stock.grid(row=5, column=1, columnspan=2, sticky='we')
+
+        # --- 8. NUEVO: Botón Eliminar Alerta ---
+        self.btn_eliminar_alerta = ttk.Button(self.página_cuaderno_productos, 
+                                              text="Eliminar", 
+                                              state='disabled', 
+                                              command=self.resetearVentasAcumuladas)
+        
+        # Lo ponemos en la fila 6, alineado a la derecha
+        self.btn_eliminar_alerta.grid(row=6, column=2, padx=0, pady=(5, 0), sticky="e")
+
+        # --- 9. NUEVO: Lógica de Habilitación ---
+        def habilitar_btn_alerta(event):
+            if self.tabla_stock_alerta.selection():
+                self.btn_eliminar_alerta.config(state='normal')
+            else:
+                self.btn_eliminar_alerta.config(state='disabled')
+
+        self.tabla_stock_alerta.bind("<<TreeviewSelect>>", habilitar_btn_alerta)
+    
+    def resetearVentasAcumuladas(self):
+        """
+        Resetea las ventas acumuladas a 0 para los productos seleccionados en la tabla de alertas.
+        Esto los saca de la lista de alertas.
+        """
+        # 1. Obtener selección
+        seleccion = self.tabla_stock_alerta.selection()
+        if not seleccion:
+            return
+
+        # 2. Confirmar
+        confirmacion = MensajeModerno(self, "Resetear Ventas", 
+                                      "¿Está seguro de eliminar la alerta para los productos seleccionados?\n\n"
+                                      "Esto pondrá sus ventas acumuladas en 0.", tipo="pregunta")
+        
+        if confirmacion.resultado:
+            try:
+                codigos_procesados = 0
+                
+                # 3. Iterar y actualizar
+                for item_id in seleccion:
+                    item = self.tabla_stock_alerta.item(item_id)
+                    codigo = item['values'][0] # El código es la primera columna
+                    
+                    # Llamada a la base de datos
+                    self.base_de_datos.resetearVentasProducto(codigo)
+                    codigos_procesados += 1
+
+                # 4. Actualizar interfaz
+                self.datos = self.base_de_datos.consultarDatosProductos() # Recargar datos generales
+                self.cargarDatosEnTablaEnHilo()
+                
+                # Deshabilitar botón
+                self.btn_eliminar_alerta.config(state='disabled')
+                
+                MensajeModerno(self, "Éxito", f"Se resetearon las ventas de {codigos_procesados} productos.", tipo="éxito")
+
+            except Exception as e:
+                MensajeModerno(self, "Error", f"Error al resetear ventas: {e}", tipo="error")
 
     def quitarDelCarrito(self):
         """
@@ -875,101 +873,197 @@ class Aplicación(tk.Tk):
                                        lambda event, widget=self.entrada_ventas_acumuladas, var=self.ventas_acumuladas: 
                                        self.controlar_caracteres_solo_enteros(event, widget, var, max_valor=MÁX_VENTAS_ACUM_PRODUCTO))
 
-        # --- Descripción (en Columna 1) ---
+        self.etiqueta_alternativa = ttk.Label(self.labelframe_productos, text="Alternativa:")
+        self.etiqueta_alternativa.grid(column=0, row=5, # Fila 5
+                                        padx=PADX_ETIQUETA_VENTAS_ACUM_PRODUCTOS, 
+                                        pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                        sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        
+        self.alternativa = tk.StringVar()
+        self.entrada_alternativa = ttk.Entry(self.labelframe_productos, 
+                                            width=ANCHO_ENTRADA_CÓDIGO_PRODUCTOS,
+                                            textvariable=self.alternativa)
+        
+        self.entrada_alternativa.grid(column=0, row=5,
+                                        padx=PADX_ENTRADA_IZQUIERDA_VENTAS_ACUM_PRODUCTOS, 
+                                        pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
+                                        sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
+        self.entrada_alternativa.bind(EVENTO_TECLA_PRESIONADA, 
+            lambda event: self.limitar_longitud_entrada(
+                event, 
+                self.entrada_alternativa, 
+                self.alternativa, 
+                MÁX_CARACTERES_CÓDIGO_PRODUCTO, 
+                "El código del producto alternativo es muy largo."
+            )
+        )
+
+        # --- Descripción (Ajuste de Rowspan) ---
         self.etiqueta_descripción = ttk.Label(self.labelframe_productos, 
                                             text=ETIQUETA_DESCRIPCIÓN_TEXTO_PRODUCTOS)
-        # Etiqueta en Col 1, Fila 0 (para alinear con "Nombre")
         self.etiqueta_descripción.grid(column=1, row=0, 
                                     padx=PADX_WIDGETS_DESCRIPCIÓN_PRODUCTOS, 
                                     pady=PADY_ETIQUETA_DESCRIPCIÓN_PRODUCTOS, 
-                                    sticky=STICKY_WIDGET_OESTE_PRODUCTOS) # Re-usamos "w"
+                                    sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
 
         self.texto_desplazado = st.ScrolledText(self.labelframe_productos, 
                                                 width=ANCHO_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
                                                 height=ALTO_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
                                                 wrap=WRAP_TEXTO_DESCRIPCIÓN_PRODUCTOS,
-                                                font=('Segoe UI', 10),          # Fuente moderna
-                                                relief="solid",                 # Borde plano (sin efecto 3D)
-                                                borderwidth=1,                  # Borde fino y elegante
-                                                padx=10, pady=10,               # "Aire" interno para que el texto no toque los bordes
-                                                bg=COLOR_BLANCO,                # Fondo blanco limpio
-                                                fg=COLOR_TEXTO,                 # Color de texto gris oscuro
-                                                selectbackground=COLOR_ACENTO,  # Color de selección azul (tu color de acento)
-                                                selectforeground="white")       # Texto blanco al seleccionar
+                                                font=('Segoe UI', 10),
+                                                relief="solid", borderwidth=1,
+                                                padx=10, pady=10,
+                                                bg=COLOR_BLANCO, fg=COLOR_TEXTO,
+                                                selectbackground=COLOR_ACENTO, selectforeground="white")
 
-        # Texto en Col 1, Fila 2, y se expande 3 filas (para alinear con Precio, Stock y Stock Mínimo)
         self.texto_desplazado.grid(column=1, row=1, 
-                                rowspan=FILASPAN_TEXTO_DESCRIPCIÓN_PRODUCTOS,
+                                rowspan=5, # <-- AUMENTADO DE 4 A 5
                                 padx=PADX_WIDGETS_DESCRIPCIÓN_PRODUCTOS, 
                                 pady=PADY_TEXTO_DESCRIPCIÓN_PRODUCTOS, 
-                                sticky=STICKY_TEXTO_DESCRIPCIÓN_PRODUCTOS) # "nsew" para que llene
+                                sticky=STICKY_TEXTO_DESCRIPCIÓN_PRODUCTOS)
 
         self.texto_desplazado.bind(EVENTO_TECLA_PRESIONADA, self.limitar_caracteres_descripción)
 
-        # - Etiqueta: contador de caracteres restantes para la descripción.
-        #    - Muestra el número máximo de caracteres permitidos (MÁX_CAR_DESCRIP).
-        #    - Se actualiza dinámicamente con 'self.limitar_caracteres_descripción'.
+        # Contador de caracteres
         self.etiqueta_contador_caracteres = ttk.Label(self.labelframe_productos, text=str(MÁX_CAR_DESCRIP))
-        self.etiqueta_contador_caracteres.grid(column=1, row=5, padx=(300, 0), pady=(0, 0), sticky="w")
-        self.etiqueta_contador_caracteres.configure(style="verde.TLabel")  # Color verde inicial (suficientes caracteres)
+        self.etiqueta_contador_caracteres.grid(column=1, row=6, padx=(300, 0), pady=(0, 0), sticky="w") # <-- Fila 6
+        self.etiqueta_contador_caracteres.configure(style="verde.TLabel")
 
-        # --- Botones: Añadir, Editar, Eliminar, Limpiar --- (Fila 6)
+        # --- Botones ---
 
-        # --- Botón Añadir ---
+        # 1. Añadir
         self.botón_añadir_productos = ttk.Button(self.labelframe_productos, 
                                                  text=TEXTO_BOTÓN_AÑADIR_PRODUCTOS, 
+                                                 #image=self.ico_add, 
+                                                 compound="left",
                                                  command=self.añadirProducto)
-        self.botón_añadir_productos.grid(column=0, row=6, 
-                                         padx=PADX_BOTÓN_AÑADIR_PRODUCTOS, 
-                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, # Reutilizamos constante
-                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS) # Reutilizamos constante
+        self.botón_añadir_productos.grid(column=0, row=7, padx=PADX_BOTÓN_AÑADIR_PRODUCTOS, pady=PADY_WIDGETS_GENERAL_PRODUCTOS, sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
 
-        
-        # --- Botón Editar ---
+        # 2. Editar
         self.botón_editar_productos = ttk.Button(self.labelframe_productos, 
                                                  text=TEXTO_BOTÓN_EDITAR_PRODUCTOS, 
-                                                 command=self.editarProducto) # (Asumo que la función se llama así)
-        self.botón_editar_productos.grid(column=0, row=6, 
-                                         padx=PADX_BOTÓN_EDITAR_PRODUCTOS, 
-                                         pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
-                                         sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+                                                 #image=self.ico_edit, 
+                                                 compound="left",
+                                                 command=self.editarProducto)
+        self.botón_editar_productos.grid(column=0, row=7, padx=PADX_BOTÓN_EDITAR_PRODUCTOS, pady=PADY_WIDGETS_GENERAL_PRODUCTOS, sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         
-        # --- Botón Eliminar ---
+        # 3. Eliminar
         self.botón_eliminar_productos = ttk.Button(self.labelframe_productos, 
                                                    text=TEXTO_BOTÓN_ELIMINAR_PRODUCTOS, 
-                                                   command=self.eliminarProducto) # (Asumo que la función se llama así)
-        self.botón_eliminar_productos.grid(column=0, row=6, 
-                                           padx=PADX_BOTÓN_ELIMINAR_PRODUCTOS, 
-                                           pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
-                                           sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+                                                   #image=self.ico_del, 
+                                                   compound="left",
+                                                   command=self.eliminarProducto)
+        self.botón_eliminar_productos.grid(column=0, row=7, padx=PADX_BOTÓN_ELIMINAR_PRODUCTOS, pady=PADY_WIDGETS_GENERAL_PRODUCTOS, sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         
-        # --- Botón Limpiar ---
-        self.botón_limpiar_productos = ttk.Button(self.labelframe_productos, 
-                                                  text=TEXTO_BOTÓN_LIMPIAR_PRODUCTOS, 
-                                                  command=self.limpiarCamposProductos) # (Asumo que la función se llama así)
-        self.botón_limpiar_productos.grid(column=0, row=6, 
-                                          padx=PADX_BOTÓN_LIMPIAR_PRODUCTOS, 
-                                          pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
-                                          sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        # 4. Elegir Alternativa
+        # Nota: Asigna la función que desees en 'command'
+        self.botón_alternativa = ttk.Button(self.labelframe_productos, 
+                                                  text="Elegir Alt.", # O una constante
+                                                  # image=self.ico_clean, # Opcional: Icono nuevo
+                                                  compound="left",
+                                                  command=self.elegirAlternativa) 
+        self.botón_alternativa.grid(column=0, row=7, padx=PADX_BOTÓN_AGREGAR_ALTER_PRODUCTOS, pady=PADY_WIDGETS_GENERAL_PRODUCTOS, sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
     
-        # --- Botón Buscar ---
+        # 5. Buscar
         self.botón_buscar_productos = ttk.Button(self.labelframe_productos, 
                                                   text=TEXTO_BOTÓN_BUSCAR_PRODUCTOS, 
-                                                  command=self.buscarProducto) # (Asumo que la función se llama así)
-        self.botón_buscar_productos.grid(column=1, row=6, 
-                                          padx=PADX_BOTÓN_BUSCAR_PRODUCTOS, 
-                                          pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
-                                          sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+                                                  #image=self.ico_search, 
+                                                  compound="left",
+                                                  command=self.buscarProducto)
+        self.botón_buscar_productos.grid(column=1, row=7, padx=PADX_BOTÓN_BUSCAR_PRODUCTOS, pady=PADY_WIDGETS_GENERAL_PRODUCTOS, sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
         
-        # --- Botón mostrar Todo ---
-
+        # 6. Todo
         self.botón_mostrar_todos_los_productos = ttk.Button(self.labelframe_productos, text=TEXTO_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS,
+                                                            #image=self.ico_all, 
+                                                            compound="left",
                                                             command=self.mostrarTodosLosProductos)
-        self.botón_mostrar_todos_los_productos.grid(column=1, row=6, 
-                                          padx=PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS, 
-                                          pady=PADY_WIDGETS_GENERAL_PRODUCTOS, 
-                                          sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+        self.botón_mostrar_todos_los_productos.grid(column=1, row=7, padx=PADX_BOTÓN_MOSTRAR_TODOS_LOS_PRODUCTOS, pady=PADY_WIDGETS_GENERAL_PRODUCTOS, sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
 
+        # 7. Limpiar (MOVIDO a la derecha de Todo)
+        # Necesitarás ajustar el PADX o crear una nueva constante
+        self.botón_limpiar_productos = ttk.Button(self.labelframe_productos, 
+                                                  text=TEXTO_BOTÓN_LIMPIAR_PRODUCTOS, 
+                                                  #image=self.ico_clean, 
+                                                  compound="left",
+                                                  command=self.limpiarCamposProductos)
+        # Lo ponemos a la derecha de "Todo" (110 + ancho de todo aprox = 210)
+        self.botón_limpiar_productos.grid(column=1, row=7, padx=PADX_BOTÓN_LIMPIAR_PRODUCTOS, pady=PADY_WIDGETS_GENERAL_PRODUCTOS, sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
+        self.botón_ver_alternativa = ttk.Button(self.labelframe_productos, 
+                                                text="Ver Alternativa", 
+                                                command=self.verAlternativa)
+        
+        self.botón_ver_alternativa.grid(column=0, row=8, 
+                                        padx=PADX_BOTÓN_AÑADIR_PRODUCTOS, 
+                                        pady=(0, 5), # Un poco de espacio abajo 
+                                        sticky=STICKY_WIDGET_OESTE_PRODUCTOS)
+
+    def verAlternativa(self):
+        """
+        Busca y muestra los detalles del producto alternativo indicado en el formulario.
+        """
+        # 1. Obtener el código del campo "Alternativa"
+        código_alt = self.alternativa.get().strip()
+        
+        if not código_alt:
+            MensajeModerno(self, "Atención", "El campo 'Alternativa' está vacío.", tipo="advertencia")
+            self.entrada_alternativa.focus()
+            return
+
+        # 2. Consultar a la Base de Datos
+        self.mostrarProductoAlternativo(código_alt)
+    
+    def verAlternativaVenta(self):
+        """
+        Busca el producto alternativo asociado al código ingresado en Ventas
+        y muestra sus detalles.
+        """
+        # 1. Obtener código
+        codigo_actual = self.código_venta.get().strip()
+        
+        if not codigo_actual:
+            MensajeModerno(self, "Atención", "Ingrese un código de producto para ver su alternativa.", tipo="advertencia")
+            self.entrada_código_producto_venta.focus()
+            return
+            
+        prod_actual = self.base_de_datos.buscarProductoPorCódigo(codigo_actual)
+            
+        if not prod_actual:
+            MensajeModerno(self, "No encontrado", "El producto ingresado no existe.", tipo="error")
+            return
+
+        id_alternativa = prod_actual[7] # El ID de la alternativa está al final
+
+        if not id_alternativa:
+            MensajeModerno(self, "Sin alternativa", "Este producto no tiene una alternativa configurada.", tipo="info")
+            return
+            
+        prod_alt = self.base_de_datos.obtenerProductoPorID(id_alternativa)
+        self.mostrarProductoAlternativo(prod_alt[0]) # El código está en el índice 0
+    
+    def mostrarProductoAlternativo(self, código_alt):
+        try:
+            producto = self.base_de_datos.buscarProductoPorCódigo(código_alt)
+            
+            if producto:
+                # producto = (codigo, nombre, precio, ventas, umbral, desc, id, id_alt)
+                # Indices: 0=Cod, 1=Nom, 2=Precio, 5=Desc
+                
+                info = f"Código: {producto[0]}\n" \
+                       f"Nombre: {producto[1]}\n" \
+                       f"Precio: $ {producto[2]}\n\n" \
+                       f"Descripción:\n{producto[5]}"
+                
+                # Mostrar en ventana de información (tipo 'exito' usa el check verde, o usa 'info' si prefieres)
+                MensajeModerno(self, "Detalles de Alternativa", info, tipo="exito")
+            
+            else:
+                MensajeModerno(self, "No encontrado", f"No existe ningún producto con el código '{código_alt}'.", tipo="error")
+
+        except Exception as e:
+            MensajeModerno(self, "Error", f"Error al consultar alternativa: {e}", tipo="error")
+            
     def mostrarTodosLosProductos(self):
         """
         Muestra todos los productos en la tabla, limpiando cualquier filtro o búsqueda previa.
@@ -1001,7 +1095,7 @@ class Aplicación(tk.Tk):
                                                         labelwidget=self.etiqueta_título_venta)
         
         # 3. Posicionar el LabelFrame
-        self.labelframe_venta_producto.grid(column=0, row=5, rowspan=1,
+        self.labelframe_venta_producto.grid(column=1, row=5, # <-- CAMBIO: Empieza en Columna 1
                                             columnspan=3,
                                             padx=PADX_GENERAL_VENTA, 
                                             pady=PADY_GENERAL_VENTA,
@@ -1040,6 +1134,15 @@ class Aplicación(tk.Tk):
                                            text=BOTÓN_VER_PRECIO_VENTA,
                                            command=self.verPrecioProducto)
         self.botón_ver_precio.grid(column=4, row=0, 
+                                   padx=PADX_GENERAL_VENTA, 
+                                   pady=PADY_GENERAL_VENTA, 
+                                   sticky=STICKY_WIDGET_OESTE_VENTA)
+
+        # botón "Ver Alternativa" ---
+        self.botón_ver_alternativa_venta = ttk.Button(self.labelframe_venta_producto, 
+                                           text="Ver alternativa",
+                                           command=self.verAlternativaVenta)
+        self.botón_ver_alternativa_venta.grid(column=5, row=0, # Columna 5
                                    padx=PADX_GENERAL_VENTA, 
                                    pady=PADY_GENERAL_VENTA, 
                                    sticky=STICKY_WIDGET_OESTE_VENTA)
@@ -1088,7 +1191,7 @@ class Aplicación(tk.Tk):
         self.botón_agregar_carrito = ttk.Button(self.labelframe_venta_producto, 
                                                 text=BOTÓN_AGREGAR_CARRITO_VENTA,
                                                 command=self.agregarAlCarrito)
-        self.botón_agregar_carrito.grid(column=5, row=0, 
+        self.botón_agregar_carrito.grid(column=6, row=0, 
                                       padx=PADX_GENERAL_VENTA, 
                                       pady=PADY_GENERAL_VENTA, 
                                       sticky=STICKY_WIDGET_OESTE_VENTA)
@@ -1097,22 +1200,12 @@ class Aplicación(tk.Tk):
         self.botón_limpiar = ttk.Button(self.labelframe_venta_producto, 
                                            text=BOTÓN_LIMPIAR_VENTA,
                                            command=self.limpiarCamposVenta)
-        self.botón_limpiar.grid(column=6, row=0, 
+        self.botón_limpiar.grid(column=7, row=0, 
                                    padx=PADX_GENERAL_VENTA, 
                                    pady=PADY_GENERAL_VENTA, 
                                    sticky=STICKY_WIDGET_OESTE_VENTA)
 
         # --- Fila 2 (Interior) ---
-        
-        # Botón "Eliminar venta"
-        self.botón_eliminar_venta = ttk.Button(self.labelframe_venta_producto, 
-                                               text=BOTÓN_ELIMINAR_VENTA_VENTA,
-                                               command=self.eliminarVenta, # Asignamos la nueva función
-                                               state='disabled')
-        self.botón_eliminar_venta.grid(column=3, row=1, # Col 3, Fila 1 (Nuevo espacio)
-                                      padx=PADX_GENERAL_VENTA, 
-                                      pady=PADY_GENERAL_VENTA, 
-                                      sticky=STICKY_WIDGET_OESTE_VENTA)
         
         # Botón "Vaciar carrito"
         self.botón_vaciar_carrito = ttk.Button(self.labelframe_venta_producto, 
@@ -1280,12 +1373,12 @@ class Aplicación(tk.Tk):
         combo_medios.pack(pady=5, padx=20, fill='x')
 
         # Botón Finalizar (Deshabilitado al inicio)
-        btn_finalizar = ttk.Button(ventana_pago, text="Finalizar", state="disabled", style="TButton")
-        btn_finalizar.pack(pady=20)
+        botón_finalizar = ttk.Button(ventana_pago, text="Finalizar", state="disabled", style="TButton")
+        botón_finalizar.pack(pady=20)
 
         # Función para habilitar botón
         def habilitar_boton(event):
-            btn_finalizar.config(state="normal")
+            botón_finalizar.config(state="normal")
         
         combo_medios.bind("<<ComboboxSelected>>", habilitar_boton)
 
@@ -1296,7 +1389,7 @@ class Aplicación(tk.Tk):
             # Llamar a la lógica de guardado pasando el medio
             self.procesarVentaFinal(medio_seleccionado)
 
-        btn_finalizar.config(command=confirmar_pago)
+        botón_finalizar.config(command=confirmar_pago)
         
         # Hacer modal
         ventana_pago.transient(self)
@@ -1338,6 +1431,137 @@ class Aplicación(tk.Tk):
                     
         except Exception as e:
             MensajeModerno(self, "Error", f"No se pudieron cargar las ventas: {str(e)}", tipo="error")
+    
+    def elegirAlternativa(self):
+        """
+        Abre una ventana modal para buscar y seleccionar un producto alternativo.
+        """
+        
+        # 1. Crear la ventana
+        ventana_alt = tk.Toplevel(self)
+        ventana_alt.title("Seleccionar Alternativa")
+        ventana_alt.configure(bg="white")
+        ventana_alt.resizable(False, False)
+
+        try:
+            # Reutilizamos la lógica de ruta segura
+            if getattr(sys, 'frozen', False):
+                base_dir = sys._MEIPASS
+            else:
+                base_dir = os.path.dirname(__file__)
+            
+            ruta_icono = os.path.join(base_dir, NOMBRE_ICONO) # Usamos la constante global
+            
+            if os.path.exists(ruta_icono):
+                ventana_alt.iconbitmap(ruta_icono)
+        except Exception:
+            pass # Si falla el icono, la ventana abre igual con el default
+
+        # 2. Centrar y definir tamaño (AUMENTADO ALTO a 400)
+        ancho_v = 400
+        alto_v = 400 # <--- CAMBIO AQUÍ (Más alto)
+        x = self.winfo_x() + (self.winfo_width() // 2) - (ancho_v // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (alto_v // 2)
+        ventana_alt.geometry(f"{ancho_v}x{alto_v}+{x}+{y}")
+
+        # --- SECCIÓN DE BÚSQUEDA ---
+        frame_top = tk.Frame(ventana_alt, bg="white", pady=10)
+        frame_top.pack(fill="x", padx=20)
+
+        lbl_buscar = ttk.Label(frame_top, text="Buscar por nombre:", background="white", font=('Segoe UI', 10))
+        lbl_buscar.pack(anchor="w")
+
+        entry_buscar = ttk.Entry(frame_top)
+        entry_buscar.pack(fill="x", pady=(5, 0))
+        entry_buscar.focus() 
+
+        # --- SECCIÓN DE BOTONES (Primero, para asegurar espacio abajo) ---
+        # Usamos pack(side="bottom") PRIMERO para que se reserve su espacio al fondo
+        frame_botones = tk.Frame(ventana_alt, bg="white", pady=15)
+        frame_botones.pack(side="bottom", fill="x", padx=20)
+
+        # Definimos las funciones antes de crear los botones
+        def habilitar_seleccion(event):
+            if tree_alt.selection():
+                btn_seleccionar.config(state="normal")
+            else:
+                btn_seleccionar.config(state="disabled")
+
+        def realizar_busqueda(event=None):
+            texto = entry_buscar.get().strip()
+            for item in tree_alt.get_children():
+                tree_alt.delete(item)
+            btn_seleccionar.config(state="disabled")
+
+            if not texto: return
+
+            resultados = self.base_de_datos.buscarProductoPorNombre(texto)
+            if resultados:
+                for prod in resultados:
+                    cod = prod[0]
+                    nom = prod[1]
+                    tree_alt.insert('', tk.END, values=(nom, cod))
+
+        def limpiar_busqueda():
+            entry_buscar.delete(0, tk.END)
+            for item in tree_alt.get_children():
+                tree_alt.delete(item)
+            btn_seleccionar.config(state="disabled")
+            entry_buscar.focus()
+
+        def seleccionar_producto():
+            seleccion = tree_alt.selection()
+            if not seleccion: return
+            
+            item = tree_alt.item(seleccion[0])
+            codigo_seleccionado = item['values'][1]
+            
+            codigo_actual = self.código.get().strip()
+            if codigo_seleccionado == codigo_actual:
+                MensajeModerno(ventana_alt, "Error", "No puede elegir el mismo producto.", tipo="error")
+                return
+
+            self.alternativa.set(codigo_seleccionado)
+            ventana_alt.destroy()
+
+        # Crear los botones
+        btn_buscar = ttk.Button(frame_botones, text="Buscar", command=realizar_busqueda)
+        btn_buscar.pack(side="left")
+
+        btn_limpiar = ttk.Button(frame_botones, text="Limpiar", command=limpiar_busqueda)
+        btn_limpiar.pack(side="left", padx=10)
+
+        btn_seleccionar = ttk.Button(frame_botones, text="Seleccionar", command=seleccionar_producto, state="disabled")
+        btn_seleccionar.pack(side="right")
+
+        # --- TABLA DE RESULTADOS (En el medio) ---
+        # Ahora que el top y el bottom están fijos, la tabla usa el espacio restante
+        frame_tabla = tk.Frame(ventana_alt, bg="white")
+        frame_tabla.pack(fill="both", expand=True, padx=20, pady=5)
+
+        cols = ('nombre', 'codigo')
+        tree_alt = ttk.Treeview(frame_tabla, columns=cols, show='headings') # Sin altura fija, que se expanda
+        
+        tree_alt.heading('nombre', text='Nombre')
+        tree_alt.column('nombre', width=330, anchor='w')
+        
+        tree_alt.heading('codigo', text='')
+        tree_alt.column('codigo', width=0, stretch=tk.NO)
+
+        scroll = ttk.Scrollbar(frame_tabla, orient="vertical", command=tree_alt.yview)
+        tree_alt.configure(yscrollcommand=scroll.set)
+        
+        tree_alt.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+
+        # Bindings
+        tree_alt.bind("<<TreeviewSelect>>", habilitar_seleccion)
+        entry_buscar.bind("<Return>", realizar_busqueda)
+
+        # Modalidad
+        ventana_alt.transient(self)
+        ventana_alt.grab_set()
+        self.wait_window(ventana_alt)
             
     def agregarAlCarrito(self):
         """
@@ -1415,12 +1639,12 @@ class Aplicación(tk.Tk):
                 self.tabla_carrito.insert('', tk.END, values=valores_fila, tags=(tag_fila,))
 
             # 6. Actualizar el Valor total de la venta
-            # Usamos la variable con el nombre original de tu __init__ (con el error de tipeo 'produdcto')
-            total_actual_str = self.etiqueta_valor_total_produdcto.cget('text')
+            # Usamos la variable con el nombre original de tu __init__
+            total_actual_str = self.etiqueta_valor_total_producto.cget('text')
             nuevo_total_float = float(total_actual_str) + subtotal_float_nuevo
             nuevo_total_formateado = f"{nuevo_total_float:.2f}"
             
-            self.etiqueta_valor_total_produdcto.config(text=nuevo_total_formateado)
+            self.etiqueta_valor_total_producto.config(text=nuevo_total_formateado)
             
             # 7. Limpiar campos
             self.limpiarCamposVenta() 
@@ -1436,7 +1660,11 @@ class Aplicación(tk.Tk):
         """
         # 1. Obtener datos
         nombre = self.var_nuevo_medio.get().strip()
-        facturar = 1 if self.var_facturar_medio.get() else 0 
+        # LEER ESTADO ACTUAL
+        valor_raw = self.var_facturar_medio.get()
+        facturar = 1 if valor_raw else 0 
+        
+        print(f"DEBUG: Checkbox value: {valor_raw} -> Enviando a BD: {facturar}")
 
         # 2. Validaciones básicas de UI
         if not nombre:
@@ -1469,9 +1697,9 @@ class Aplicación(tk.Tk):
                 mensaje_exito = f"Medio de pago '{nombre}' agregado correctamente."
 
             # 4. Finalización Exitosa (Común para Caso B y C)
-            MensajeModerno(self, "Éxito", mensaje_exito, tipo="éxito")
             self.limpiarCamposMedioPago()
             self.actualizarListaMediosEnHilo() # Recargar lista
+            MensajeModerno(self, "Éxito", mensaje_exito, tipo="éxito")
 
         except Exception as e:
             MensajeModerno(self, "Error Crítico", f"Ocurrió un error en la base de datos: {e}", tipo="error")
@@ -1524,7 +1752,48 @@ class Aplicación(tk.Tk):
         # 4. Poner el foco en el campo de texto
         self.entry_nuevo_medio.focus()
 
-        self.btn_agregar_medio.config(state='normal')
+        self.botón_agregar_medio.config(state='normal')
+
+        self.botón_editar_medio.config(state='disabled')
+
+        self.botón_eliminar_medio.config(state='disabled')
+
+    def editarMedioPago(self):
+        """
+        Modifica el medio de pago seleccionado con los datos del formulario.
+        """
+        # 1. Obtener selección original (para saber QUÉ estamos editando)
+        seleccion = self.listbox_medios.curselection()
+        if not seleccion:
+            MensajeModerno(self, "Atención", "Debe seleccionar un medio de pago de la lista para editarlo.", tipo="advertencia")
+            return
+
+        nombre_original = self.listbox_medios.get(seleccion[0])
+
+        # 2. Obtener nuevos datos del formulario
+        nuevo_nombre = self.var_nuevo_medio.get().strip()
+        nuevo_facturar = 1 if self.var_facturar_medio.get() else 0
+
+        # 3. Validaciones
+        if not nuevo_nombre:
+            MensajeModerno(self, "Atención", "El nombre no puede estar vacío.", tipo="advertencia")
+            self.entry_nuevo_medio.focus()
+            return
+
+        # 4. Guardar cambios
+        try:
+            self.base_de_datos.modificarMedioPago(nombre_original, nuevo_nombre, nuevo_facturar)
+            
+            MensajeModerno(self, "Éxito", "Medio de pago actualizado correctamente.", tipo="éxito")
+            
+            # 5. Refrescar y Limpiar
+            self.limpiarCamposMedioPago()
+            self.actualizarListaMediosEnHilo()
+
+        except ValueError as ve:
+            MensajeModerno(self, "Error", str(ve), tipo="error")
+        except Exception as e:
+            MensajeModerno(self, "Error Crítico", f"No se pudo editar: {e}", tipo="error")
 
     def limpiarCamposVenta(self):
         """
@@ -1594,28 +1863,134 @@ class Aplicación(tk.Tk):
         else:
             MensajeModerno(self, 'No encontrado', 'No se encontró ningún producto con esos datos.', tipo="info")
 
+    def procesarVentaFinal(self, nombre_medio_pago):
+        """
+        Guarda la venta y emite factura si corresponde.
+        Ejecuta la facturación en un hilo para no congelar la UI.
+        """
+        
+        # 1. Obtener datos (rápido, en hilo principal)
+        items_carrito_ids = self.tabla_carrito.get_children()
+        total_venta_str = self.etiqueta_valor_total_producto.cget('text')
+        total_float = float(total_venta_str)
+        fecha_actual = datetime.now()
+
+        # Verificar si se factura
+        datos_medio = self.base_de_datos.obtenerDetalleMedioPago(nombre_medio_pago)
+        se_factura = bool(datos_medio[0]) if datos_medio else False
+
+        # --- CORRECCIÓN: Inicializar variable para evitar NameError ---
+        ventana_espera = None 
+
+        # --- FUNCIÓN INTERNA PARA EL HILO ---
+        def tarea_facturacion():
+            cae = "-"
+            nro_factura = "-"
+            error_afip = None
+
+            # A. FACTURACIÓN (Lento)
+            if se_factura:
+                try:
+                    resultado_afip = facturación.emitir_factura_b(total_float)
+                    if not resultado_afip['exito']:
+                        error_afip = resultado_afip['mensaje']
+                    else:
+                        cae = resultado_afip['cae']
+                        nro_factura = resultado_afip['numero_factura']
+                except Exception as e:
+                    error_afip = f"Error inesperado al facturar: {e}"
+            
+            # B. VOLVER AL HILO PRINCIPAL
+            self.after(0, lambda: finalizar_proceso(cae, nro_factura, error_afip))
+
+        # --- FUNCIÓN DE FINALIZACIÓN (Hilo Principal) ---
+        def finalizar_proceso(cae, nro_factura, error_afip):
+            # --- CORRECCIÓN: Cerrar solo si existe ---
+            if ventana_espera:
+                ventana_espera.cerrar()
+
+            # Si hubo error en AFIP, mostrar y cancelar
+            if error_afip:
+                MensajeModerno(self, "Error AFIP", error_afip, tipo="error")
+                return
+
+            try:
+                # 2. Registrar VENTA (Rápido)
+                id_venta_generado = self.base_de_datos.registrarVenta([nombre_medio_pago, fecha_actual])
+                if id_venta_generado is None:
+                    raise Exception("Fallo al registrar venta en BD.")
+
+                # 3. Registrar DETALLES y actualizar VENTAS ACUMULADAS
+                for item_id in items_carrito_ids:
+                    valores = self.tabla_carrito.item(item_id, 'values')
+                    código = valores[0]
+                    precio = float(valores[2])
+                    cantidad = int(valores[3])
+
+                    self.base_de_datos.ingresarDetalleVenta([id_venta_generado, código, cantidad, precio])
+                    self.base_de_datos.actualizarVentasProducto([cantidad, código])
+                
+                # 4. Limpieza y Refresco
+                funciones_útiles.borrarTodasLasFilas(self.tabla_carrito)
+                self.etiqueta_valor_total_producto.config(text="0.00")
+                self.limpiarCamposVenta()
+
+                self.actualizarTablaVentasEnHilo()
+                self.datos = self.base_de_datos.consultarDatosProductos() 
+                self.cargarDatosEnTablaEnHilo() 
+                funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+
+                # 5. Mensaje Éxito
+                msg = f"Venta registrada correctamente.\nMedio: {nombre_medio_pago}"
+                if se_factura:
+                    msg += f"\n\nFactura B N°: {nro_factura}\nCAE: {cae}"
+                
+                MensajeModerno(self, "Éxito", msg, tipo="éxito")
+
+            except Exception as e:
+                MensajeModerno(self, "Error Crítico", f"Error al guardar venta: {str(e)}", tipo="error")
+
+        # --- INICIO DEL PROCESO ---
+        if se_factura:
+            # Mostrar ventana de espera personalizada
+            ventana_espera = VentanaCierre(self, mensaje="Conectando con AFIP...\nPor favor espere, no cierre el programa.")
+            
+            # Lanzar hilo
+            threading.Thread(target=tarea_facturacion, daemon=True).start()
+        else:
+            # Si no factura, llamar directo a finalizar (sin espera ni hilo)
+            finalizar_proceso("-", "-", None)
+
     def añadirProducto(self):
         """
         Valida los campos de entrada y añade el nuevo producto a la base de datos.
-        Si los campos de ventas/umbral están vacíos, se guardan como NULL.
         """
         if self.esUnProductoVálido():  
             # 1. Obtener datos básicos
             código = self.código.get().strip()
             nombre = self.nombre.get().strip()
             descripción = self.texto_desplazado.get("1.0", tk.END).strip()
-            
-            # Precio (ya validado como float)
             precio = float(self.precio.get().strip())
+            
+            # Obtener código de alternativa para validación
+            código_alt = self.alternativa.get().strip()
+            
+            if código_alt and código == código_alt:
+                MensajeModerno(self, "Error de Validación", 
+                               "El código de Alternativa no puede ser el mismo que el código del propio producto.", 
+                               tipo="error")
+                self.entrada_alternativa.focus()
+                return
+            # -------------------------------------------
 
             # 2. Manejar campos opcionales (NULL si están vacíos)
-            ventas_acum_str = self.ventas_acum.get().strip()
+            ventas_acum_str = self.ventas_acumuladas.get().strip()
             umbral_str = self.umbral.get().strip()
 
             ventas_acumuladas = int(ventas_acum_str) if ventas_acum_str else None
             umbral_ventas = int(umbral_str) if umbral_str else None
 
-            # 3. Crear lista de datos
+            # 3. Crear lista de datos (Nota: ingresarProducto actualmente solo acepta 6 campos)
             # Orden: [codigo, nombre, descripcion, precio, ventas_acum, umbral]
             producto = [
                 código,
@@ -1793,32 +2168,24 @@ class Aplicación(tk.Tk):
 
     def cargarTablaProducto(self):
         """
-        Carga los datos de los productos alternando colores de fila.
-        Si ventas_acumuladas o umbral_ventas son None, muestra cadena vacía.
+        Carga los datos... Si ventas, umbral o alternativa son None, muestra cadena vacía.
         """
-        # Configurar los tags de color en la tabla
         self.tabla_productos.tag_configure('impar', background=COLOR_BLANCO)
         self.tabla_productos.tag_configure('par', background=COLOR_FONDO_APP)
 
         if self.datos:
             for i, fila_tupla in enumerate(self.datos):
-                # Convertimos la tupla a lista para poder modificarla
                 producto = list(fila_tupla)
-
-                # El orden es: [0]código, [1]nombre, [2]precio, [3]ventas, [4]umbral, ...
                 
-                # Si ventas_acumuladas es None, poner ""
-                if producto[3] is None:
-                    producto[3] = ""
+                # Índices: [0]cod, [1]nom, [2]pre, [3]ventas, [4]umbral, [5]desc, [6]ALT, [7]ID
                 
-                # Si umbral_ventas es None, poner ""
-                if producto[4] is None:
-                    producto[4] = ""
-
-                # Determinar si la fila es par o impar
+                if producto[3] is None: producto[3] = "" # Ventas
+                if producto[4] is None: producto[4] = "" # Umbral
+                
+                # --- NUEVO: Manejo de Alternativa ---
+                if producto[6] is None: producto[6] = "" 
+                
                 tag_fila = 'par' if i % 2 == 0 else 'impar'
-                
-                # Insertar la lista modificada
                 self.tabla_productos.insert('', tk.END, values=producto, tags=(tag_fila,))
             
             self.aplicarOrdenGuardado(self.tabla_productos, 'productos')
@@ -2003,56 +2370,41 @@ class Aplicación(tk.Tk):
         self.lbl_facturar.grid(column=0, row=2, padx=5, pady=5, sticky="e")
 
         # 2. Variable de control
-        self.var_facturar_medio = tk.BooleanVar(value=True) # Empezar activado (como en tu imagen)
+        self.var_facturar_medio = tk.BooleanVar(value=False) # Empezar activado (como en tu imagen)
 
-        # 3. Función para alternar el diseño
-        def toggle_facturar(event=None):
-            estado = not self.var_facturar_medio.get()
-            self.var_facturar_medio.set(estado)
-            actualizar_icono()
-
-        def actualizar_icono():
-            if not self.var_facturar_medio.get():
-                # ACTIVADO: Fondo azul con check blanco (Simulado con caracteres)
-                # Usamos "☑" (BALLOT BOX WITH CHECK) o "✓" con color
-                self.lbl_icono_facturar.config(text="☑", foreground=COLOR_ACENTO, font=('Segoe UI', 14))
-            else:
-                # DESACTIVADO: Caja vacía
-                self.lbl_icono_facturar.config(text="☐", foreground="#555", font=('Segoe UI', 14))
-
-        # 4. El Widget "Checkbox" (es un Label interactivo)
+        # 3. El Widget "Checkbox" (Label interactivo)
         self.lbl_icono_facturar = ttk.Label(self.labelframe_medios_pago, cursor="hand2")
         self.lbl_icono_facturar.grid(column=1, row=2, padx=5, pady=5, sticky="w")
         
-        # Configuración inicial
-        actualizar_icono()
+        # 4. Configuración inicial (Usando el método de clase CORRECTO)
+        self.actualizarIconoFacturar()
         
-        # Evento de clic
-        self.lbl_icono_facturar.bind("<Button-1>", toggle_facturar)
+        # 5. Evento de clic (Usando el método de clase CORRECTO)
+        self.lbl_icono_facturar.bind("<Button-1>", self.toggleFacturar)
 
         # --- Fila 3: Botones (Movidos una fila abajo) ---
         
-        self.btn_agregar_medio = ttk.Button(self.labelframe_medios_pago, 
+        self.botón_agregar_medio = ttk.Button(self.labelframe_medios_pago, 
                                             text=BOTÓN_AGREGAR_MEDIO,
                                             command=self.agregarMedioPago)
-        self.btn_agregar_medio.grid(column=0, row=3, padx=5, pady=10, sticky="ew")
+        self.botón_agregar_medio.grid(column=0, row=3, padx=5, pady=10, sticky="ew")
 
         # Botón Editar (Fila 4, Columna 0) - DEBAJO DE AGREGAR
-        self.btn_editar_medio = ttk.Button(self.labelframe_medios_pago, 
-                                            text=BOTÓN_EDITAR_MEDIO)
-                                            # command=self.editarMedioPago) # A implementar
-        self.btn_editar_medio.grid(column=0, row=4, padx=5, pady=(0, 10), sticky="ew")
+        self.botón_editar_medio = ttk.Button(self.labelframe_medios_pago, 
+                                            text=BOTÓN_EDITAR_MEDIO,
+                                            command=self.editarMedioPago)
+        self.botón_editar_medio.grid(column=0, row=4, padx=5, pady=(0, 10), sticky="ew")
         
-        self.btn_eliminar_medio = ttk.Button(self.labelframe_medios_pago, 
+        self.botón_eliminar_medio = ttk.Button(self.labelframe_medios_pago, 
                                              text=BOTÓN_ELIMINAR_MEDIO,
                                              command=self.eliminarMedioPago)
-        self.btn_eliminar_medio.grid(column=1, row=3, columnspan=2, padx=5, pady=10, sticky="ew")
+        self.botón_eliminar_medio.grid(column=1, row=3, columnspan=2, padx=5, pady=10, sticky="ew")
 
         # Botón Limpiar (Fila 4, Columna 1-2) - DEBAJO DE ELIMINAR
-        self.btn_limpiar_medio = ttk.Button(self.labelframe_medios_pago, 
+        self.botón_limpiar_medio = ttk.Button(self.labelframe_medios_pago, 
                                             text=BOTÓN_LIMPIAR_MEDIO,
                                             command=self.limpiarCamposMedioPago)
-        self.btn_limpiar_medio.grid(column=1, row=4, columnspan=2, padx=5, pady=(0, 10), sticky="ew")
+        self.botón_limpiar_medio.grid(column=1, row=4, columnspan=2, padx=5, pady=(0, 10), sticky="ew")
     
     def manejarSelecciónMedio(self, event):
         """
@@ -2077,10 +2429,10 @@ class Aplicación(tk.Tk):
             self.lbl_icono_facturar.config(cursor="hand2", foreground="#555") # Color normal
             
             # Botones
-            self.btn_agregar_medio.config(state='normal')
-            self.btn_editar_medio.config(state='disabled')  # No se puede editar la nada
-            self.btn_eliminar_medio.config(state='disabled')# No se puede eliminar la nada
-            self.btn_limpiar_medio.config(state='normal')   # Permitimos limpiar
+            self.botón_agregar_medio.config(state='normal')
+            self.botón_editar_medio.config(state='disabled')  # No se puede editar la nada
+            self.botón_eliminar_medio.config(state='disabled')# No se puede eliminar la nada
+            self.botón_limpiar_medio.config(state='normal')   # Permitimos limpiar
 
         elif cantidad == 1:
             # --- UN SOLO ÍTEM: Modo Edición ---
@@ -2101,10 +2453,10 @@ class Aplicación(tk.Tk):
             self.lbl_icono_facturar.config(cursor="hand2")
             
             # Botones
-            self.btn_agregar_medio.config(state='disabled') # Bloqueamos agregar para evitar duplicados por error
-            self.btn_editar_medio.config(state='normal')
-            self.btn_eliminar_medio.config(state='normal')
-            self.btn_limpiar_medio.config(state='normal')
+            self.botón_agregar_medio.config(state='disabled') # Bloqueamos agregar para evitar duplicados por error
+            self.botón_editar_medio.config(state='normal')
+            self.botón_eliminar_medio.config(state='normal')
+            self.botón_limpiar_medio.config(state='normal')
 
         else:
             # --- MÚLTIPLES ÍTEMS: Modo Borrado Masivo ---
@@ -2119,10 +2471,10 @@ class Aplicación(tk.Tk):
             self.lbl_icono_facturar.config(cursor="arrow")
             
             # Botones
-            self.btn_agregar_medio.config(state='disabled')
-            self.btn_editar_medio.config(state='disabled')
-            self.btn_limpiar_medio.config(state='disabled') # Bloqueamos limpiar para obligar a deseleccionar manualmente o borrar
-            self.btn_eliminar_medio.config(state='normal')  # Solo permitimos eliminar
+            self.botón_agregar_medio.config(state='disabled')
+            self.botón_editar_medio.config(state='disabled')
+            self.botón_limpiar_medio.config(state='disabled') # Bloqueamos limpiar para obligar a deseleccionar manualmente o borrar
+            self.botón_eliminar_medio.config(state='normal')  # Solo permitimos eliminar
 
     def actualizarTablaVentasEnHilo(self):
         def cargar_datos():
@@ -2189,9 +2541,9 @@ class Aplicación(tk.Tk):
         self.entry_nuevo_medio.config(state=estado)
         
         # 2. Botones (Agregar, Editar, Limpiar)
-        self.btn_agregar_medio.config(state=estado)
-        self.btn_editar_medio.config(state=estado)
-        self.btn_limpiar_medio.config(state=estado)
+        self.botón_agregar_medio.config(state=estado)
+        self.botón_editar_medio.config(state=estado)
+        self.botón_limpiar_medio.config(state=estado)
         
         # 3. Checkbox (Simulado con Label)
         if estado == 'disabled':
@@ -2249,10 +2601,9 @@ class Aplicación(tk.Tk):
                 self.umbral.set(datos[4])
                 self.ventas_acumuladas.set(datos[3])
                 self.texto_desplazado.insert('1.0', datos[5])
+                self.alternativa.set(datos[6])
                 self.manejarCambioUmbral()
 
-                # --- NUEVO CÓDIGO: Deseleccionar y mover cursor al final ---
-                
                 # Lista de todos los widgets Entry que acabamos de llenar
                 entradas = [self.entrada_código, self.entrada_nombre, self.entrada_precio, 
                             self.entrada_umbral, self.entrada_ventas_acumuladas]
@@ -2280,48 +2631,346 @@ class Aplicación(tk.Tk):
     def editarProducto(self):
         """
         Intenta editar el producto seleccionado en la base de datos.
-
-        Recopila los nuevos valores del formulario y los envía a la base de datos.
-        Confía en la restricción UNIQUE de la base de datos para capturar 
-        errores de código duplicado.
         """
-        valores = []  # Lista para almacenar los nuevos valores del producto.
-        item_seleccionado = self.tabla_productos.focus()  # Obtiene el ítem seleccionado.
+        valores = []
+        item_seleccionado = self.tabla_productos.focus()
         
-        # 1. Verifica si hay un ítem seleccionado Y si el formulario es válido
         if item_seleccionado and self.esUnProductoVálido():
-            datos = self.tabla_productos.item(item_seleccionado)['values']  # Obtiene los valores ORIGINALES.
+            datos_originales = self.tabla_productos.item(item_seleccionado)['values']
             
-            # 2. Prepara los valores para enviar a la BD
-            valores.append(self.código.get().strip()) # 0: código
-            valores.append(self.nombre.get().strip()) # 1: nombre
-            valores.append(self.texto_desplazado.get("1.0", tk.END).strip()) # 2: desc
-            valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0) # 3: precio
-            valores.append(int(self.umbral.get().strip()) if self.umbral.get().strip() else 0) # 4: stock
-            valores.append(int(self.ventas_acumuladas.get().strip()) if self.ventas_acumuladas.get().strip() else 0) # 5: stock_min
-            valores.append(datos[-1])  # 6: Agrega el id_producto (para el WHERE)
+            # Recopilar datos del formulario
+            código = self.código.get().strip()
+            valores.append(código)                           # 0: Código
+            valores.append(self.nombre.get().strip())        # 1: Nombre
+            valores.append(self.texto_desplazado.get("1.0", tk.END).strip()) # 2: Descripción
+            valores.append(float(self.precio.get().strip()) if self.precio.get().strip() else 0) # 3: Precio
+            
+            # Manejo de vacíos para enteros
+            ventas = self.ventas_acumuladas.get().strip()
+            valores.append(int(ventas) if ventas else None)  # 4: Ventas Acum.
+            
+            umbral = self.umbral.get().strip()
+            valores.append(int(umbral) if umbral else None)  # 5: Umbral
+            
+            # NUEVO: Campo Alternativa
+            alternativa = self.alternativa.get().strip()
+            
+            if alternativa and código == alternativa:
+                MensajeModerno(self, "Error de validación", 
+                               "El código del producto alternativo no puede ser el mismo que el código del propio producto.", 
+                               tipo="error")
+                self.entrada_alternativa.focus()
+                return
 
-            # 3. Intenta modificar, confiando en la BD para capturar duplicados
+            valores.append(alternativa if alternativa else None) # 6: Cod. Alternativa
+            
+            # ID Original
+            valores.append(datos_originales[-1])                # 7: ID Producto (WHERE)
+            
             try:
-                self.base_de_datos.modificarUnProducto(valores)  # Modifica el producto
+                self.base_de_datos.modificarUnProducto(valores)
                 
                 self.limpiarCamposProductos()
-                self.datos = self.base_de_datos.consultarDatosProductos()  # Actualiza los datos locales.
+                self.datos = self.base_de_datos.consultarDatosProductos()
                 self.cargarDatosEnTablaEnHilo()
                 funciones_útiles.crearHiloRespaldarBaseDeDatos(self.base_de_datos)
+                
                 MensajeModerno(self, "Éxito", "Producto modificado correctamente.", tipo="éxito")
 
             except ValueError as ve:
-                # Captura el error de "Código duplicado" (1062)
-                MensajeModerno(self, "Error de Duplicado", str(ve), tipo="error")
-                self.entrada_código.focus() # Pone el foco en el campo incorrecto
+                MensajeModerno(self, "Error de Validación", str(ve), tipo="error")
+                self.entrada_código.focus()
             except Exception as e:
-                # Captura cualquier otro error
-                MensajeModerno(self, "Error de Base de Datos", 
-                                     f"No se pudo modificar el producto: {str(e)}", tipo="error")
+                MensajeModerno(self, "Error de Base de Datos", f"No se pudo modificar: {str(e)}", tipo="error")
+        
         elif not item_seleccionado:
-            MensajeModerno(self,"Error", "Debe seleccionar un producto", tipo="advertencia")
+            MensajeModerno(self, "Atención", "Debe seleccionar un producto de la lista para editarlo.", tipo="advertencia")
     
+    def crearLabelFrameAdministrarVentas(self):
+        """
+        Crea el LabelFrame para la gestión de ventas (eliminación, reportes, etc.)
+        y ubica los botones de acción.
+        """
+        
+        # 1. Crear la ETIQUETA del título
+        self.etiqueta_título_administrar = ttk.Label(self.página_cuaderno_ventas, 
+                                                text="Administrar ventas", 
+                                                font=FUENTE_TÍTULO_PRODUCTOS)
+        
+        # 2. Crear el LabelFrame y pasar la etiqueta
+        self.labelframe_administrar_ventas = ttk.LabelFrame(self.página_cuaderno_ventas, 
+                                                            labelwidget=self.etiqueta_título_administrar)
+        
+        # 3. Posicionar el LabelFrame (Col 0, Fila 5 - Alineado con la tabla de Ventas)
+        self.labelframe_administrar_ventas.grid(column=0, row=5,
+                                                padx=PADX_GENERAL_VENTA, 
+                                                pady=PADY_GENERAL_VENTA,
+                                                sticky="wn") # Se pega arriba a la izquierda
+        
+        # 4. Botón "Eliminar venta" (Fila 0, Columna 0)
+        self.botón_eliminar_venta = ttk.Button(self.labelframe_administrar_ventas, 
+                                               text=BOTÓN_ELIMINAR_VENTA_VENTA,
+                                               command=self.eliminarVenta,
+                                               state='disabled')
+        
+        self.botón_eliminar_venta.grid(column=0, row=0, 
+                                      padx=PADX_GENERAL_VENTA, 
+                                      pady=PADY_GENERAL_VENTA, 
+                                      sticky="w")
+
+        # 5. Botón "Reporte Productos" (NUEVO - Fila 1, Columna 0 - DEBAJO de Eliminar Venta)
+        self.botón_reporte_productos = ttk.Button(self.labelframe_administrar_ventas, 
+                                      text="Reporte Productos",
+                                      command=self.generarReporteProductos)
+        
+        self.botón_reporte_productos.grid(column=0, row=1, 
+                              padx=PADX_GENERAL_VENTA, 
+                              pady=PADY_GENERAL_VENTA, 
+                              sticky="w")
+
+        # 6. Botón "Reporte Ventas" (Fila 0, Columna 1 - A la DERECHA de Eliminar Venta)
+        self.botón_excel = ttk.Button(self.labelframe_administrar_ventas, 
+                                      text="Reporte Ventas",
+                                      command=self.generarReporteExcel)
+        
+        self.botón_excel.grid(column=1, row=0, 
+                              padx=PADX_GENERAL_VENTA, 
+                              pady=PADY_GENERAL_VENTA, 
+                              sticky="w")
+
+    def generarReporteProductos(self):
+        """
+        Genera un Excel con el ranking de productos por recaudación.
+        Se ejecuta en un Hilo para mostrar ventana de espera.
+        """
+        from openpyxl.styles import Border, Side
+        
+        # 1. Primero pedimos la ruta (En el hilo principal)
+        fecha_hoy = datetime.now().strftime("%Y-%m-%d")
+        ruta_archivo = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Archivos de Excel", "*.xlsx")],
+            initialfile=f"Ranking_Productos_{fecha_hoy}.xlsx",
+            title="Guardar Reporte de Productos"
+        )
+
+        if not ruta_archivo: 
+            return
+
+        # 2. Creamos la ventana de carga
+        ventana_carga = VentanaCierre(self, mensaje="Generando reporte de productos...\nEsta operación puede tardar unos momentos.")
+
+        # 3. Definimos la tarea pesada
+        def tarea_generar():
+            exito = False
+            mensaje = ""
+            tipo_msg = "info"
+
+            try:
+                # Consultar BD
+                datos = self.base_de_datos.consultarReporteProductos()
+                
+                if not datos:
+                    mensaje = "No hay productos activos o ventas registradas."
+                    tipo_msg = "info"
+                else:
+                    # Crear DataFrame
+                    df = pd.DataFrame(datos, columns=["Producto", "Unidades Vendidas", "Recaudación Total ($)"])
+
+                    # Exportar y Formatear
+                    with pd.ExcelWriter(ruta_archivo, engine='openpyxl') as writer:
+                        df.to_excel(writer, index=False, sheet_name='Ranking')
+                        ws = writer.sheets['Ranking']
+                        
+                        negro_grueso = Side(border_style="thick", color="000000")
+                        negro_fino = Side(border_style="thin", color="000000")
+                        
+                        max_row = ws.max_row
+                        max_col = ws.max_column
+                        
+                        for r in range(1, max_row + 1):
+                            for c in range(1, max_col + 1):
+                                celda = ws.cell(row=r, column=c)
+                                
+                                b_left = negro_grueso
+                                b_right = negro_grueso
+                                b_top = negro_fino
+                                b_bottom = negro_fino
+                                
+                                if r == 1: 
+                                    b_top = negro_grueso
+                                    b_bottom = negro_grueso
+                                
+                                if r == max_row:
+                                    b_bottom = negro_grueso
+                                    
+                                celda.border = Border(left=b_left, right=b_right, top=b_top, bottom=b_bottom)
+                        
+                        # Autoajuste
+                        for column in ws.columns:
+                            max_length = 0
+                            column_letter = column[0].column_letter
+                            for cell in column:
+                                try:
+                                    if len(str(cell.value)) > max_length:
+                                        max_length = len(str(cell.value))
+                                except: pass
+                            ws.column_dimensions[column_letter].width = (max_length + 2)
+
+                    exito = True
+                    mensaje = f"Reporte generado correctamente en:\n{ruta_archivo}"
+                    tipo_msg = "éxito"
+
+            except Exception as e:
+                mensaje = f"Error al generar reporte: {e}"
+                tipo_msg = "error"
+
+            # 4. Volver al hilo principal para mostrar resultado
+            self.after(0, lambda: finalizar_proceso(exito, mensaje, tipo_msg))
+
+        def finalizar_proceso(resultado_exito, texto_msg, tipo):
+            ventana_carga.cerrar() # Cerrar ventana de espera
+            if texto_msg:
+                MensajeModerno(self, "Resultado", texto_msg, tipo=tipo)
+
+        # 5. Iniciar el Hilo
+        threading.Thread(target=tarea_generar, daemon=True).start()
+    
+    def generarReporteExcel(self):
+        """
+        Consulta los datos, los formatea y exporta a Excel.
+        Se ejecuta en un Hilo para mostrar ventana de espera.
+        """
+        from openpyxl.styles import Border, Side
+        
+        # 1. Pedir ruta primero
+        fecha_hoy = datetime.now().strftime("%Y-%m-%d")
+        ruta_archivo = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Archivos de Excel", "*.xlsx")],
+            initialfile=f"Reporte_Ventas_{fecha_hoy}.xlsx",
+            title="Guardar Reporte de Ventas"
+        )
+
+        if not ruta_archivo:
+            return 
+
+        # 2. Ventana de carga
+        ventana_carga = VentanaCierre(self, mensaje="Procesando ventas y generando Excel...\nPor favor, espere.")
+
+        # 3. Tarea en segundo plano
+        def tarea_generar():
+            msg_texto = ""
+            msg_tipo = "info"
+            
+            try:
+                # Obtener datos de BD
+                datos_raw = self.base_de_datos.consultarDatosParaExcel()
+                
+                if not datos_raw:
+                    msg_texto = "No hay ventas registradas para exportar."
+                    self.after(0, lambda: finalizar(msg_texto, "info"))
+                    return
+
+                # Procesar datos
+                filas_procesadas = []
+                ultimo_id_venta = None
+                filas_inicio_venta = [] 
+
+                for i, fila in enumerate(datos_raw):
+                    id_venta, fecha_obj, total_venta, producto, precio_u, cantidad, subtotal = fila
+                    fecha_str = fecha_obj.strftime("%d/%m/%Y %H:%M")
+                    
+                    fila_excel_actual = i + 2 
+
+                    if id_venta != ultimo_id_venta:
+                        nueva_fila = {
+                            "ID Venta": id_venta,
+                            "Fecha y Hora": fecha_str,
+                            "Total Venta": float(total_venta),
+                            "Producto": producto,
+                            "Precio Unit.": float(precio_u),
+                            "Cantidad": int(cantidad),
+                            "Subtotal": float(subtotal)
+                        }
+                        ultimo_id_venta = id_venta
+                        filas_inicio_venta.append(fila_excel_actual)
+                    else:
+                        nueva_fila = {
+                            "ID Venta": "", "Fecha y Hora": "", "Total Venta": "",
+                            "Producto": producto,
+                            "Precio Unit.": float(precio_u),
+                            "Cantidad": int(cantidad),
+                            "Subtotal": float(subtotal)
+                        }
+                    
+                    filas_procesadas.append(nueva_fila)
+
+                # Crear DataFrame y Guardar
+                df = pd.DataFrame(filas_procesadas)
+
+                with pd.ExcelWriter(ruta_archivo, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Ventas')
+                    worksheet = writer.sheets['Ventas']
+
+                    negro_grueso = Side(border_style="thick", color="000000")
+                    negro_fino = Side(border_style="thin", color="000000")
+                    
+                    set_inicio_ventas = set(filas_inicio_venta)
+                    max_row = worksheet.max_row
+                    max_col = worksheet.max_column
+
+                    for r in range(1, max_row + 1):
+                        for c in range(1, max_col + 1):
+                            celda = worksheet.cell(row=r, column=c)
+                            
+                            # Estilos de tu última modificación
+                            b_left = negro_grueso
+                            b_right = negro_grueso
+                            b_top = negro_fino
+                            b_bottom = negro_fino
+                            
+                            if r == 1:
+                                b_top = negro_grueso
+                                b_bottom = negro_grueso
+                            else:
+                                if r in set_inicio_ventas:
+                                    b_top = negro_grueso
+                                if r == max_row:
+                                    b_bottom = negro_grueso
+                                elif (r + 1) in set_inicio_ventas:
+                                    b_bottom = negro_grueso
+                            
+                            celda.border = Border(left=b_left, right=b_right, top=b_top, bottom=b_bottom)
+
+                    for column in worksheet.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter 
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except: pass
+                        worksheet.column_dimensions[column_letter].width = (max_length + 2)
+
+                msg_texto = f"Reporte generado correctamente en:\n{ruta_archivo}"
+                msg_tipo = "éxito"
+
+            except Exception as e:
+                msg_texto = f"No se pudo generar el Excel: {str(e)}"
+                msg_tipo = "error"
+            
+            # Llamar a finalizar en el hilo principal
+            self.after(0, lambda: finalizar(msg_texto, msg_tipo))
+
+        def finalizar(texto, tipo):
+            ventana_carga.cerrar()
+            if texto:
+                MensajeModerno(self, "Resultado", texto, tipo=tipo)
+
+        # 4. Arrancar hilo
+        threading.Thread(target=tarea_generar, daemon=True).start()
+
     def eliminarProducto(self):
         """
         Elimina el producto seleccionado de la base de datos y actualiza la interfaz.
@@ -2699,7 +3348,9 @@ class Aplicación(tk.Tk):
 
     def toggleFacturar(self, event=None):
         """Cambia el estado del Checkbox al hacer clic."""
-        self.var_facturar_medio.set(not self.var_facturar_medio.get())
+        # ERROR POTENCIAL: Solo actualiza visualmente si la lógica no está bien conectada
+        estado = not self.var_facturar_medio.get()
+        self.var_facturar_medio.set(estado) # <-- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ
         self.actualizarIconoFacturar()
     
     def ordenarColumna(self, tree, col, descendente, nombre_tabla=None):

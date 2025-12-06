@@ -1,14 +1,35 @@
 import tkinter as tk
 from tkinter import ttk
+import os
+import sys
+
+NOMBRE_ICONO = "librería.ico"
 
 class MensajeModerno(tk.Toplevel):
     def __init__(self, parent, título, mensaje, tipo="advertencia"):
         
         super().__init__(parent)
+        self.overrideredirect(True)  # Quitar bordes ANTES de que Windows pinte nada
+        # --- NUEVO: Configurar el Ícono de la ventana ---
+        try:
+            
+            # Detectar si es ejecutable (.exe) o script (.py)
+            if getattr(sys, 'frozen', False):
+                base_dir = sys._MEIPASS
+            else:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            # Asumiendo que el icono está en la misma carpeta que este archivo
+            ruta_icono = os.path.join(base_dir, NOMBRE_ICONO)
+            
+            if os.path.exists(ruta_icono):
+                self.iconbitmap(ruta_icono)
+        except Exception:
+            pass # Si falla, se muestra el icono por defecto
+        # ------------------------------------------------
         
-        # --- TRUCO ANTI-PARPADEO ---
-        # 1. Hacemos la ventana totalmente transparente (invisible) inmediatamente
-        self.attributes("-alpha", 0.0) 
+        # --- ANTI PARPADEO REAL ---
+        self.withdraw()   # La ventana NO aparece aún
         
         self.resultado = False 
 
@@ -21,10 +42,10 @@ class MensajeModerno(tk.Toplevel):
         if tipo == "error":
             icono = "❌"
             color_icono = "red"
-        elif tipo == "éxito": # Nota: cuidado con el acento en el string si lo usas en el código
+        elif tipo == "éxito": 
             icono = "✅"
             color_icono = "#008000"
-        elif tipo == "exito": # Opción sin acento por si acaso
+        elif tipo == "exito": 
             icono = "✅"
             color_icono = "#008000"
         elif tipo == "pregunta":
@@ -79,9 +100,8 @@ class MensajeModerno(tk.Toplevel):
         
         self.geometry(f"+{x}+{y}")
 
-        # --- MOSTRAR LA VENTANA ---
-        # 2. Una vez posicionada, la volvemos opaca (visible)
-        self.attributes("-alpha", 1.0) 
+        self.deiconify()  # Ahora sí, mostrar la ventana
+        self.overrideredirect(False)
 
         # 8. Hacer modal
         self.transient(parent)

@@ -2,7 +2,6 @@ import subprocess
 import os
 import datetime
 import shutil
-import sys
 import tempfile # <--- 1. AÑADIR ESTO
 
 # Configuración de nombres
