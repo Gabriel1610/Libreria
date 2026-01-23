@@ -620,8 +620,8 @@ class Aplicación(tk.Tk):
         Esto los saca de la lista de alertas.
         """
         # 1. Obtener selección
-        seleccion = self.tabla_stock_alerta.selection()
-        if not seleccion:
+        selección = self.tabla_stock_alerta.selection()
+        if not selección:
             return
 
         # 2. Confirmar
@@ -634,12 +634,12 @@ class Aplicación(tk.Tk):
                 codigos_procesados = 0
                 
                 # 3. Iterar y actualizar
-                for item_id in seleccion:
+                for item_id in selección:
                     item = self.tabla_stock_alerta.item(item_id)
-                    codigo = item['values'][0] # El código es la primera columna
+                    código = item['values'][0] # El código es la primera columna
                     
                     # Llamada a la base de datos
-                    self.base_de_datos.resetearVentasProducto(codigo)
+                    self.base_de_datos.resetearVentasProducto(código)
                     codigos_procesados += 1
 
                 # 4. Actualizar interfaz
@@ -1047,7 +1047,7 @@ class Aplicación(tk.Tk):
             producto = self.base_de_datos.buscarProductoPorCódigo(código_alt)
             
             if producto:
-                # producto = (codigo, nombre, precio, ventas, umbral, desc, id, id_alt)
+                # producto = (código, nombre, precio, ventas, umbral, desc, id, id_alt)
                 # Indices: 0=Cod, 1=Nom, 2=Precio, 5=Desc
                 
                 info = f"Código: {producto[0]}\n" \
@@ -1296,7 +1296,7 @@ class Aplicación(tk.Tk):
         
         try:
             # 4. Consultar los detalles de esa venta
-            # (Devuelve: codigo, nombre, precio_unitario, cantidad, subtotal)
+            # (Devuelve: código, nombre, precio_unitario, cantidad, subtotal)
             detalles = self.base_de_datos.consultarDetalleVenta(id_venta_seleccionada)
 
             if detalles is None:
@@ -1510,10 +1510,10 @@ class Aplicación(tk.Tk):
             entry_buscar.focus()
 
         def seleccionar_producto():
-            seleccion = tree_alt.selection()
-            if not seleccion: return
+            selección = tree_alt.selection()
+            if not selección: return
             
-            item = tree_alt.item(seleccion[0])
+            item = tree_alt.item(selección[0])
             codigo_seleccionado = item['values'][1]
             
             codigo_actual = self.código.get().strip()
@@ -1539,14 +1539,14 @@ class Aplicación(tk.Tk):
         frame_tabla = tk.Frame(ventana_alt, bg="white")
         frame_tabla.pack(fill="both", expand=True, padx=20, pady=5)
 
-        cols = ('nombre', 'codigo')
+        cols = ('nombre', 'código')
         tree_alt = ttk.Treeview(frame_tabla, columns=cols, show='headings') # Sin altura fija, que se expanda
         
         tree_alt.heading('nombre', text='Nombre')
         tree_alt.column('nombre', width=330, anchor='w')
         
-        tree_alt.heading('codigo', text='')
-        tree_alt.column('codigo', width=0, stretch=tk.NO)
+        tree_alt.heading('código', text='')
+        tree_alt.column('código', width=0, stretch=tk.NO)
 
         scroll = ttk.Scrollbar(frame_tabla, orient="vertical", command=tree_alt.yview)
         tree_alt.configure(yscrollcommand=scroll.set)
@@ -1763,12 +1763,12 @@ class Aplicación(tk.Tk):
         Modifica el medio de pago seleccionado con los datos del formulario.
         """
         # 1. Obtener selección original (para saber QUÉ estamos editando)
-        seleccion = self.listbox_medios.curselection()
-        if not seleccion:
+        selección = self.listbox_medios.curselection()
+        if not selección:
             MensajeModerno(self, "Atención", "Debe seleccionar un medio de pago de la lista para editarlo.", tipo="advertencia")
             return
 
-        nombre_original = self.listbox_medios.get(seleccion[0])
+        nombre_original = self.listbox_medios.get(selección[0])
 
         # 2. Obtener nuevos datos del formulario
         nuevo_nombre = self.var_nuevo_medio.get().strip()
@@ -1991,7 +1991,7 @@ class Aplicación(tk.Tk):
             umbral_ventas = int(umbral_str) if umbral_str else None
 
             # 3. Crear lista de datos (Nota: ingresarProducto actualmente solo acepta 6 campos)
-            # Orden: [codigo, nombre, descripcion, precio, ventas_acum, umbral]
+            # Orden: [código, nombre, descripcion, precio, ventas_acum, umbral]
             producto = [
                 código,
                 nombre,
@@ -2231,9 +2231,9 @@ class Aplicación(tk.Tk):
                     
                     if confirmacion_revertir.resultado:
                         for item in detalles:
-                            codigo = item[0]
+                            código = item[0]
                             cantidad = int(item[3])
-                            self.base_de_datos.actualizarVentasProducto([-cantidad, codigo])
+                            self.base_de_datos.actualizarVentasProducto([-cantidad, código])
 
                 # 6. Eliminar Venta
                 self.base_de_datos.eliminarVentaPorID([id_venta])
@@ -2414,8 +2414,8 @@ class Aplicación(tk.Tk):
         - 1 seleccionado: Modo "Edición" (Carga datos, habilita Editar/Eliminar).
         - >1 seleccionados: Modo "Eliminación Múltiple" (Bloquea edición, solo permite Eliminar).
         """
-        seleccion = self.listbox_medios.curselection()
-        cantidad = len(seleccion)
+        selección = self.listbox_medios.curselection()
+        cantidad = len(selección)
 
         if cantidad == 0:
             # --- NADA SELECCIONADO: Modo Agregar ---
@@ -2438,7 +2438,7 @@ class Aplicación(tk.Tk):
             # --- UN SOLO ÍTEM: Modo Edición ---
             
             # Cargar datos del único seleccionado
-            nombre_medio = self.listbox_medios.get(seleccion[0])
+            nombre_medio = self.listbox_medios.get(selección[0])
             self.var_nuevo_medio.set(nombre_medio)
             
             # Consultar si factura

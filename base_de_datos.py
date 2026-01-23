@@ -1175,7 +1175,25 @@ class BaseDeDatos:
             if cursor: cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
-                
+    
+    def eliminar_clase(self, id_clase):
+        """Elimina una clase por su código (ID)."""
+        conexión = None
+        cursor = None
+        try:
+            conexión = self.abrir()
+            cursor = conexión.cursor()
+            sql = "DELETE FROM clases_dadas WHERE código = %s"
+            cursor.execute(sql, (id_clase,))
+            conexión.commit()
+            return True
+        except Exception as e:
+            print(f"Error al eliminar: {e}")
+            return False
+        finally:
+            if cursor: cursor.close()
+            if conexión and conexión.is_connected(): conexión.close()
+            
     def obtenerDetalleMedioPago(self, nombre):
         """
         Obtiene los detalles (facturar) de un medio de pago por su nombre.
