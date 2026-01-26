@@ -6,3 +6,4 @@ dist/
 *.ini
 *.pdf
 *.exe
+venv/*

@@ -1,15 +1,11 @@
 import os
-import sys
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.ssl_ import create_urllib3_context
 from zeep import Client
 from zeep.transports import Transport
-
-# ---------------------------------------------------------------------------
-# PASO 1: CONFIGURACIÓN (ANTES DE IMPORTAR LA LIBRERÍA)
-# ---------------------------------------------------------------------------
 import arca_arg.settings as confg
+
 
 # Obtenemos la ruta donde está este archivo
 base_dir = os.path.dirname(os.path.abspath(__file__))

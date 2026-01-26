@@ -1,11 +1,10 @@
+# Python 3.12.10
 import tkinter as tk
 import os
-from tkinter import messagebox
 import sys
 import base_de_datos
 from tkinter import ttk
 from tkinter import scrolledtext as st
-from tkinter import messagebox
 from VentanaCierre import VentanaCierre
 import threading
 import functools
@@ -405,118 +404,79 @@ class Aplicación(tk.Tk):
             pass # Ignorar errores si la app se está cerrando
 
     def crearTablaConProductos(self):
-
+        """
+        Crea la tabla principal de productos usando un contenedor para permitir
+        adaptabilidad al ancho de la ventana y barras de desplazamiento aisladas.
+        """
         # --- 1. Crear la Etiqueta ---
         self.etiqueta_título_labelframe_productos = ttk.Label(self.página_cuaderno_productos, 
                                                text="Productos", 
-                                               font=FUENTE_TÍTULO_PRODUCTOS) # Re-usamos la fuente
+                                               font=FUENTE_TÍTULO_PRODUCTOS)
         
-        # Posicionar la etiqueta (Fila 4, debajo del formulario)
         self.etiqueta_título_labelframe_productos.grid(column=0, row=0, columnspan=2, 
                                         padx=5, pady=(2, 2), sticky="w")
         
+        # --- 2. Crear Frame Contenedor (NUEVO) ---
+        # Este frame contendrá la tabla y sus scrollbars. 
+        # Se ubica en la fila 1 y abarca las columnas necesarias.
+        self.frame_contenedor_productos = tk.Frame(self.página_cuaderno_productos, bg=COLOR_FONDO_APP)
+        self.frame_contenedor_productos.grid(row=1, column=0, columnspan=2, sticky='nsew', padx=5, pady=(0, 10))
+        
+        # Configurar el frame para que la tabla interna se expanda
+        self.frame_contenedor_productos.columnconfigure(0, weight=1)
+        self.frame_contenedor_productos.rowconfigure(0, weight=1)
+
+        # --- 3. Definir Columnas ---
         columnas = (
-            'código',
-            'nombre',
-            'precio',
-            'ventas_acum',
-            'umbral_ventas',
-            'descripción',
-            'alternativa',
-            'id'
+            'código', 'nombre', 'precio', 'ventas_acum', 
+            'umbral_ventas', 'descripción', 'alternativa', 'id'
         )
 
         self.tabla_productos = ttk.Treeview(
-            self.página_cuaderno_productos,
+            self.frame_contenedor_productos, # <-- PADRE AHORA ES EL FRAME
             columns=columnas,
             show='headings',
-            height=5
+            selectmode='browse'
         )
 
-        # Configuración de Encabezados Visibles
-        self.tabla_productos.heading('código', text='Código')
-        self.tabla_productos.heading('nombre', text='Nombre')
-        self.tabla_productos.heading('precio', text='Precio')
-        self.tabla_productos.heading('ventas_acum', text='Ventas Acum.')
-        self.tabla_productos.heading('umbral_ventas', text='Umbral Objetivo')
+        # --- 4. Configuración de Encabezados y Anchos ---
+        # Usamos minwidth para asegurar legibilidad, pero dejamos que se estiren si es necesario
+        
+        self.tabla_productos.heading('código', text='Código', 
+            command=lambda: self.ordenarColumna(self.tabla_productos, 'código', False, 'productos'))
+        self.tabla_productos.column("código", anchor='w', width=150, minwidth=100)
+
+        self.tabla_productos.heading('nombre', text='Nombre',
+            command=lambda: self.ordenarColumna(self.tabla_productos, 'nombre', False, 'productos'))
+        self.tabla_productos.column("nombre", anchor='w', width=300, minwidth=200)
+
+        self.tabla_productos.heading('precio', text='Precio',
+            command=lambda: self.ordenarColumna(self.tabla_productos, 'precio', False, 'productos'))
+        self.tabla_productos.column("precio", anchor='center', width=100, minwidth=80)
+        
+        self.tabla_productos.heading('ventas_acum', text='Ventas Acum.',
+            command=lambda: self.ordenarColumna(self.tabla_productos, 'ventas_acum', False, 'productos'))
+        self.tabla_productos.column("ventas_acum", anchor='center', width=100, minwidth=100)
+        
+        self.tabla_productos.heading('umbral_ventas', text='Umbral Objetivo',
+            command=lambda: self.ordenarColumna(self.tabla_productos, 'umbral_ventas', False, 'productos'))
+        self.tabla_productos.column("umbral_ventas", anchor='center', width=110, minwidth=110)
+        
         self.tabla_productos.heading('descripción', text='Descripción', anchor='w')
-        
-        # (No configuramos heading para alternativa/id para que no se vean títulos extraños)
+        self.tabla_productos.column("descripción", width=500, minwidth=300)
 
-        # Habilitar ordenamiento (solo para las columnas visibles)
-        columnas_visibles = ('código', 'nombre', 'precio', 'ventas_acum', 'umbral_ventas', 'descripción')
-        for col in columnas_visibles:
-            self.tabla_productos.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_productos, c, False, 'productos'))
-        self.tabla_productos.grid(
-            row=1,
-            column=0,
-            columnspan=3,
-            sticky='ns'
-        )
+        # Columnas ocultas (width=0, stretch=NO)
+        self.tabla_productos.column("alternativa", width=0, stretch=tk.NO)
+        self.tabla_productos.column("id", width=0, stretch=tk.NO)
 
-        self.tabla_productos.column(
-            "código",
-            anchor='w',
-            width=205,
-            minwidth=205,
-            stretch=tk.NO
-        )
-        self.tabla_productos.column(
-            "nombre",
-            anchor='w',
-            width=ANCHO_COLUMNA_NOMBRE_PRODUCTOS,
-            minwidth=ANCHO_COLUMNA_NOMBRE_PRODUCTOS,
-            stretch=tk.NO
-        )
-        self.tabla_productos.column(
-            "precio",
-            anchor='center',
-            width=90,
-            minwidth=90,
-            stretch=tk.NO
-        )
-        
-        self.tabla_productos.column(
-            "ventas_acum",
-            anchor='center',
-            width=110,
-            minwidth=110,
-            stretch=tk.NO
-        )
-        
-        self.tabla_productos.column(
-            "umbral_ventas",
-            anchor='center',
-            width=120,
-            minwidth=120,
-            stretch=tk.NO
-        )
-        self.tabla_productos.column(
-            "descripción",
-            width=1000,
-            minwidth=1000,
-            stretch=tk.NO
-        )
-
-        self.tabla_productos.column(
-            "alternativa",
-            width=0,
-            stretch=tk.NO
-        )
-
-        self.tabla_productos.column(
-            "id", 
-            width=0, 
-            stretch=tk.NO
-        )
-
+        # --- 5. Scrollbars ---
         self.barra_desplazamiento_vertical = ttk.Scrollbar(
-            self.página_cuaderno_productos,
+            self.frame_contenedor_productos, # Padre: Frame
             orient=tk.VERTICAL,
             command=self.tabla_productos.yview
         )
         self.barra_desplazamiento_horizontal = ttk.Scrollbar(
-            self.página_cuaderno_productos,
+            self.frame_contenedor_productos, # Padre: Frame
             orient=tk.HORIZONTAL,
             command=self.tabla_productos.xview
         )
@@ -524,68 +484,73 @@ class Aplicación(tk.Tk):
         self.tabla_productos.configure(xscrollcommand=self.barra_desplazamiento_horizontal.set)
         self.tabla_productos.configure(yscrollcommand=self.barra_desplazamiento_vertical.set)
 
-        self.barra_desplazamiento_vertical.grid(row=1, column=3, sticky='ns')
-        self.barra_desplazamiento_horizontal.grid(row=2, column=0, columnspan=2, sticky='we')
+        # --- 6. Posicionamiento (Grid dentro del Frame) ---
+        self.tabla_productos.grid(row=0, column=0, sticky='nsew')
+        self.barra_desplazamiento_vertical.grid(row=0, column=1, sticky='ns')
+        self.barra_desplazamiento_horizontal.grid(row=1, column=0, sticky='ew')
 
+        # Bindings
         self.tabla_productos.bind("<<TreeviewSelect>>", self.cargarRegistros)
 
     def crearTablaStockAlerta(self):
         """
-        Crea la etiqueta y la tabla (Treeview) para mostrar los productos
-        con bajo stock (o alerta de ventas) en la pestaña de productos.
+        Crea la tabla de stock en alerta dentro de un contenedor propio.
+        Esto corrige el problema de la barra de desplazamiento horizontal desalineada.
         """
         # --- 1. Crear la Etiqueta ---
         self.etiqueta_stock_alerta = ttk.Label(self.página_cuaderno_productos, 
                                                text="Stock en alerta", 
                                                font=FUENTE_TÍTULO_PRODUCTOS)
         
-        self.etiqueta_stock_alerta.grid(column=1, row=3, columnspan=2, 
+        # Ubicación etiqueta: Col 1, Fila 3
+        self.etiqueta_stock_alerta.grid(column=1, row=3, 
                                         padx=10, pady=(0, 0), sticky="w")
 
-        # --- 2. Definir Columnas ---
+        # --- 2. Crear Frame Contenedor (SOLUCIÓN) ---
+        self.frame_contenedor_alerta = tk.Frame(self.página_cuaderno_productos, bg=COLOR_FONDO_APP)
+        
+        # Ubicación: Fila 4, Columna 1.
+        self.frame_contenedor_alerta.grid(row=4, column=1, padx=(10, 0), sticky='nsew')
+        
+        # Configuración de expansión interna del frame
+        self.frame_contenedor_alerta.columnconfigure(0, weight=1)
+        self.frame_contenedor_alerta.rowconfigure(0, weight=1)
+
+        # --- 3. Definir Columnas y Tabla ---
         columnas_stock = ('código', 'nombre')
 
         self.tabla_stock_alerta = ttk.Treeview(
-            self.página_cuaderno_productos,
+            self.frame_contenedor_alerta, # <-- PADRE AHORA ES EL FRAME
             columns=columnas_stock,
             show='headings',
-            height=11,  # REDUCIDO DE 12 A 11
-            selectmode='extended'  # CAMBIADO DE 'none' A 'extended'
+            selectmode='extended',
+            height=11
         )
 
-        # 3. Configurar tags de estilo
+        # Configurar tags
         self.tabla_stock_alerta.tag_configure('alerta', foreground='red', background='#FFF0F0')
         self.tabla_stock_alerta.tag_configure('impar', background=COLOR_BLANCO)
         self.tabla_stock_alerta.tag_configure('par', background=COLOR_FONDO_APP)
 
-        # --- 4. Definir Encabezados ---
+        # Encabezados
         self.tabla_stock_alerta.heading('código', text='Código', anchor='w')
         self.tabla_stock_alerta.heading('nombre', text='Nombre', anchor='w')
         
         for col in columnas_stock:
             self.tabla_stock_alerta.heading(col, command=lambda c=col: self.ordenarColumna(self.tabla_stock_alerta, c, False, 'stock'))
 
-        # --- 5. Posicionar la Tabla ---
-        self.tabla_stock_alerta.grid(
-            row=4,
-            column=1,
-            padx=(10, 0),
-            columnspan=2,
-            sticky='nsew'
-        )
+        # Anchos (Sin ancho fijo total, usan el espacio del frame)
+        self.tabla_stock_alerta.column("código", anchor='w', width=120, minwidth=80)
+        self.tabla_stock_alerta.column("nombre", anchor='w', width=250, minwidth=150)
 
-        # --- 6. Definir Anchos de Columna ---
-        self.tabla_stock_alerta.column("código", anchor='w', width=150, stretch=tk.NO)
-        self.tabla_stock_alerta.column("nombre", anchor='w', width=300, stretch=tk.YES)
-        
-        # --- 7. Scrollbars ---
+        # --- 4. Scrollbars ---
         self.barra_desplazamiento_vertical_stock = ttk.Scrollbar(
-            self.página_cuaderno_productos,
+            self.frame_contenedor_alerta, # Padre: Frame
             orient=tk.VERTICAL,
             command=self.tabla_stock_alerta.yview
         )
         self.barra_desplazamiento_horizontal_stock = ttk.Scrollbar(
-            self.página_cuaderno_productos,
+            self.frame_contenedor_alerta, # Padre: Frame
             orient=tk.HORIZONTAL,
             command=self.tabla_stock_alerta.xview
         )
@@ -593,19 +558,21 @@ class Aplicación(tk.Tk):
         self.tabla_stock_alerta.configure(xscrollcommand=self.barra_desplazamiento_horizontal_stock.set)
         self.tabla_stock_alerta.configure(yscrollcommand=self.barra_desplazamiento_vertical_stock.set)
 
-        self.barra_desplazamiento_vertical_stock.grid(row=4, column=3, sticky='ns')
-        self.barra_desplazamiento_horizontal_stock.grid(row=5, column=1, columnspan=2, sticky='we')
+        # --- 5. Posicionamiento (Grid dentro del Frame) ---
+        self.tabla_stock_alerta.grid(row=0, column=0, sticky='nsew')
+        self.barra_desplazamiento_vertical_stock.grid(row=0, column=1, sticky='ns')
+        self.barra_desplazamiento_horizontal_stock.grid(row=1, column=0, sticky='ew')
 
-        # --- 8. NUEVO: Botón Eliminar Alerta ---
+        # --- 6. Botón Eliminar Alerta (Fuera del frame, en la pestaña principal) ---
         self.btn_eliminar_alerta = ttk.Button(self.página_cuaderno_productos, 
                                               text="Eliminar", 
                                               state='disabled', 
                                               command=self.resetearVentasAcumuladas)
         
-        # Lo ponemos en la fila 6, alineado a la derecha
-        self.btn_eliminar_alerta.grid(row=6, column=2, padx=0, pady=(5, 0), sticky="e")
+        # Ubicación del botón: Fila 6 (debajo del frame de tabla), alineado a la derecha del frame
+        self.btn_eliminar_alerta.grid(row=6, column=1, padx=0, pady=(5, 0), sticky="e")
 
-        # --- 9. NUEVO: Lógica de Habilitación ---
+        # Lógica de habilitación
         def habilitar_btn_alerta(event):
             if self.tabla_stock_alerta.selection():
                 self.btn_eliminar_alerta.config(state='normal')
@@ -613,7 +580,7 @@ class Aplicación(tk.Tk):
                 self.btn_eliminar_alerta.config(state='disabled')
 
         self.tabla_stock_alerta.bind("<<TreeviewSelect>>", habilitar_btn_alerta)
-    
+
     def resetearVentasAcumuladas(self):
         """
         Resetea las ventas acumuladas a 0 para los productos seleccionados en la tabla de alertas.

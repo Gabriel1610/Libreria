@@ -2,7 +2,7 @@ import subprocess
 import os
 import datetime
 import shutil
-import tempfile # <--- 1. AÑADIR ESTO
+import tempfile
 
 # Configuración de nombres
 NOMBRE_SCRIPT_PRINCIPAL = "Programa.py"
