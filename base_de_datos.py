@@ -531,9 +531,9 @@ class BaseDeDatos:
     def consultarDatosProductos(self):
         """
         Consulta y devuelve todos los productos ACTIVOS.
-        Incluye el CÓDIGO del producto alternativo (usando LEFT JOIN).
+        Incluye el CÓDIGO del producto alternativo y la LONGITUD de la descripción.
 
-        Devuelve: (codigo, nombre, precio, ventas, umbral, desc, COD_ALTERNATIVA, id_producto)
+        Devuelve: (codigo, nombre, precio, ventas, umbral, desc, COD_ALTERNATIVA, id_producto, LARGO_DESC)
         """
         logger = logging.getLogger(__name__)
         conexión = None
@@ -543,8 +543,9 @@ class BaseDeDatos:
             conexión = self.abrir()
             cursor = conexión.cursor()
             
-            # Consulta con LEFT JOIN para obtener el código de la alternativa (P2.codigo)
-            # en lugar de su ID.
+            # Consulta actualizada:
+            # 1. Agregamos CHAR_LENGTH para obtener la cantidad de caracteres de la descripción.
+            # 2. Usamos COALESCE para evitar problemas si la descripción es NULL (devuelve 0).
             consulta = """
                 SELECT 
                     P1.codigo, 
@@ -554,7 +555,8 @@ class BaseDeDatos:
                     P1.umbral_ventas, 
                     P1.descripcion,
                     P2.codigo AS codigo_alternativa,
-                    P1.id_producto
+                    P1.id_producto,
+                    CHAR_LENGTH(COALESCE(P1.descripcion, '')) AS largo_descripcion
                 FROM PRODUCTO AS P1
                 LEFT JOIN PRODUCTO AS P2 ON P1.id_alternativa = P2.id_producto
                 WHERE P1.eliminado = 0
@@ -577,7 +579,7 @@ class BaseDeDatos:
             if cursor: cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
-    
+
     def resetearVentasProducto(self, codigo):
         """
         Pone en 0 las ventas acumuladas de un producto dado su código.
@@ -681,6 +683,52 @@ class BaseDeDatos:
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
     
+    def buscarVentaPorID(self, id_venta):
+        """
+        Busca una venta específica por su ID y calcula su total.
+        Retorna una lista con una única tupla (o vacía):
+        [(id_venta, fecha_hora, nombre_medio_pago, total_venta)]
+        """
+        logger = logging.getLogger(__name__)
+        conexión = None
+        cursor = None
+        
+        try:
+            conexión = self.abrir()
+            cursor = conexión.cursor()
+            
+            # Consulta filtrada por ID
+            consulta = """
+                SELECT
+                    V.id_venta,
+                    V.fecha_hora,
+                    MP.nombre AS medio_pago,
+                    (SELECT ROUND(COALESCE(SUM(DV.cantidad * DV.precio_unitario), 0), 2)
+                     FROM DETALLE_VENTA AS DV
+                     WHERE DV.id_venta = V.id_venta) AS total_venta
+                FROM
+                    VENTA AS V
+                JOIN
+                    MEDIO_PAGO AS MP ON V.id_medio_pago = MP.id_medio_pago
+                WHERE
+                    V.id_venta = %s;
+            """
+            
+            cursor.execute(consulta, (id_venta,))
+            filas = cursor.fetchall()
+            return filas
+        
+        except mysql.connector.Error as err:
+            logger.exception(f"Error de MySQL al buscar venta ID {id_venta}:")
+            return None
+        except Exception as e:
+            logger.exception(f"Error inesperado al buscar venta ID {id_venta}: {e}")
+            return None
+
+        finally:
+            if cursor: cursor.close()
+            if conexión and conexión.is_connected(): conexión.close()
+
     def modificarMedioPago(self, nombre_original, nuevo_nombre, nuevo_facturar):
         """
         Modifica el nombre y/o estado de facturación de un medio de pago.
