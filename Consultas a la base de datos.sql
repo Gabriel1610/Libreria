@@ -53,6 +53,13 @@ CREATE TABLE IF NOT EXISTS DETALLE_VENTA (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS MEDIO_PAGO (
+    id_medio_pago INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    facturar TINYINT(1) DEFAULT 0, -- 0: No factura, 1: Factura AFIP
+    eliminado TINYINT(1) DEFAULT 0 -- Borrado lógico
+) ENGINE=InnoDB;
+
 SELECT * FROM PRODUCTO;
 
 -- Asegúrate de estar usando la base de datos correcta

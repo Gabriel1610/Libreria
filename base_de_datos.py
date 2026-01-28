@@ -284,41 +284,37 @@ class BaseDeDatos:
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
                 logger.info("Conexión a la base de datos cerrada.")
-    
+
     def buscarProductoPorCódigo(self, código):
         """
-        Busca un producto en la tabla PRODUCTO usando su 'código' único.
-
-        Args:
-            código (str): El código del producto a buscar.
-
-        Returns:
-            tuple: Una tupla con los datos del producto si se encuentra:
-                   (codigo, nombre, precio_venta, ventas_acumuladas, 
-                    umbral_ventas, descripcion, id_producto, id_alternativa)
-            None: Si no se encuentra el producto o si ocurre un error.
+        Busca un producto por su código.
+        Devuelve la misma estructura que consultarDatosProductos:
+        (codigo, nombre, precio, ventas, umbral, desc, COD_ALT, id_producto, LARGO_DESC)
         """
-        logger = logging.getLogger(__name__)  # Obtener el logger
+        logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
 
         try:
-            conexión = self.abrir()  # Abrir la conexión
+            conexión = self.abrir()
             cursor = conexión.cursor()
             
-            # Consulta actualizada a las nuevas columnas de la BD
-            # Se agrega id_alternativa al final
-            consulta = """SELECT codigo, nombre, 
-                                 precio_venta, ventas_acumuladas, umbral_ventas, 
-                                 descripcion, id_producto, id_alternativa
-                          FROM PRODUCTO
-                          WHERE codigo = %s;
+            consulta = """SELECT 
+                                P1.codigo, 
+                                P1.nombre, 
+                                P1.precio_venta, 
+                                P1.ventas_acumuladas, 
+                                P1.umbral_ventas, 
+                                P1.descripcion, 
+                                P2.codigo AS codigo_alternativa,
+                                P1.id_producto,
+                                CHAR_LENGTH(COALESCE(P1.descripcion, '')) AS largo_descripcion
+                          FROM PRODUCTO AS P1
+                          LEFT JOIN PRODUCTO AS P2 ON P1.id_alternativa = P2.id_producto
+                          WHERE P1.codigo = %s;
                        """
             
-            # Ejecutar la consulta pasando el 'código' como una tupla
             cursor.execute(consulta, (código,))
-            
-            # Obtener el único resultado (o None si no se encontró)
             producto = cursor.fetchone() 
             
             if producto:
@@ -326,155 +322,112 @@ class BaseDeDatos:
             else:
                 logger.warning(f"No se encontró ningún producto con código: {código}.")
                 
-            return producto # Devuelve la tupla del producto o None
+            return producto
 
         except mysql.connector.Error as err:
-            # Registra un error específico de MySQL
-            logger.exception(f"Error de MySQL durante la búsqueda del producto con código {código}:")
+            logger.exception(f"Error de MySQL al buscar código {código}:")
             return None
-
         except Exception as e:
-            # Registra cualquier otro error inesperado
-            logger.exception(f"Error inesperado durante la búsqueda del producto con código {código}:")
+            logger.exception(f"Error inesperado al buscar código {código}:")
             return None
-
         finally:
-            # Este bloque se ejecuta siempre
-            if cursor:
-                cursor.close()
-                logger.debug("Cursor cerrado.")
+            if cursor: cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
-                logger.info("Conexión a la base de datos cerrada.")
 
     def buscarProductoPorNombre(self, nombre):
         """
-        Busca productos en la tabla PRODUCTO cuyo nombre contenga el término de búsqueda.
-        La búsqueda ignora mayúsculas y minúsculas.
-        
-        Returns:
-            list: Tuplas con (codigo, nombre, precio, ventas_acum, umbral, desc, id_prod, id_alt)
+        Busca productos por nombre con la estructura estandarizada.
         """
-        logger = logging.getLogger(__name__)  # Obtener el logger
+        logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
 
         try:
-            conexión = self.abrir()  # Abrir la conexión
+            conexión = self.abrir()
             cursor = conexión.cursor()
             
             término_búsqueda = f"%{nombre.lower()}%"
 
-            # Consulta actualizada con nuevas columnas
-            # Filtramos eliminados para no mostrar basura
-            consulta = """SELECT codigo, 
-                                 nombre, 
-                                 precio_venta, 
-                                 ventas_acumuladas, 
-                                 umbral_ventas, 
-                                 descripcion, 
-                                 id_producto,
-                                 id_alternativa
-                          FROM PRODUCTO
-                          WHERE eliminado = 0 
-                            AND LOWER(nombre COLLATE utf8mb4_bin) LIKE %s
-                          ORDER BY nombre; 
+            consulta = """SELECT 
+                                P1.codigo, 
+                                P1.nombre, 
+                                P1.precio_venta, 
+                                P1.ventas_acumuladas, 
+                                P1.umbral_ventas, 
+                                P1.descripcion, 
+                                P2.codigo AS codigo_alternativa,
+                                P1.id_producto,
+                                CHAR_LENGTH(COALESCE(P1.descripcion, '')) AS largo_descripcion
+                          FROM PRODUCTO AS P1
+                          LEFT JOIN PRODUCTO AS P2 ON P1.id_alternativa = P2.id_producto
+                          WHERE P1.eliminado = 0 
+                            AND LOWER(P1.nombre COLLATE utf8mb4_bin) LIKE %s
+                          ORDER BY P1.nombre; 
                        """
             
             cursor.execute(consulta, (término_búsqueda,))
             productos = cursor.fetchall() 
             
-            if productos:
-                logger.info(f"Se encontraron {len(productos)} productos con el nombre '{nombre}'.")
-            else:
-                logger.info(f"No se encontró ningún producto que contenga '{nombre}'.")
-                
             return productos 
 
         except mysql.connector.Error as err:
-            logger.exception(f"Error de MySQL durante la búsqueda por nombre '{nombre}':")
+            logger.exception(f"Error de MySQL al buscar nombre '{nombre}':")
             return None
-
         except Exception as e:
-            logger.exception(f"Error inesperado durante la búsqueda por nombre '{nombre}':")
+            logger.exception(f"Error inesperado al buscar nombre '{nombre}':")
             return None
-
         finally:
             if cursor: cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
-                logger.info("Conexión a la base de datos cerrada.")
 
     def buscarProductoPorDescripción(self, descripción):
         """
-        Busca productos en la tabla PRODUCTO cuya descripción contenga el término de búsqueda.
-        La búsqueda ignora mayúsculas y minúsculas.
-
-        Args:
-            descripción (str): El término de búsqueda para la descripción del producto.
-
-        Returns:
-            list: Tuplas con (codigo, nombre, precio, ventas_acum, umbral, desc, id_prod, id_alt)
-            None: Si ocurre un error.
+        Busca productos por descripción con la estructura estandarizada.
         """
-        logger = logging.getLogger(__name__)  # Obtener el logger
+        logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
 
         try:
-            conexión = self.abrir()  # Abrir la conexión
+            conexión = self.abrir()
             cursor = conexión.cursor()
             
-            # Prepara el término de búsqueda para SQL LIKE (case-insensitive)
             término_búsqueda = f"%{descripción.lower()}%"
 
-            # Consulta actualizada con nuevas columnas
-            # Filtramos eliminados para no mostrar basura
-            consulta = """SELECT codigo, 
-                                 nombre, 
-                                 precio_venta, 
-                                 ventas_acumuladas, 
-                                 umbral_ventas, 
-                                 descripcion, 
-                                 id_producto,
-                                 id_alternativa
-                          FROM PRODUCTO
-                          WHERE eliminado = 0
-                            AND LOWER(descripcion COLLATE utf8mb4_bin) LIKE %s
-                          ORDER BY nombre; 
+            consulta = """SELECT 
+                                P1.codigo, 
+                                P1.nombre, 
+                                P1.precio_venta, 
+                                P1.ventas_acumuladas, 
+                                P1.umbral_ventas, 
+                                P1.descripcion, 
+                                P2.codigo AS codigo_alternativa,
+                                P1.id_producto,
+                                CHAR_LENGTH(COALESCE(P1.descripcion, '')) AS largo_descripcion
+                          FROM PRODUCTO AS P1
+                          LEFT JOIN PRODUCTO AS P2 ON P1.id_alternativa = P2.id_producto
+                          WHERE P1.eliminado = 0
+                            AND LOWER(P1.descripcion COLLATE utf8mb4_bin) LIKE %s
+                          ORDER BY P1.nombre; 
                        """
             
-            # Ejecutar la consulta pasando el término de búsqueda
             cursor.execute(consulta, (término_búsqueda,))
+            productos = cursor.fetchall() 
             
-            productos = cursor.fetchall() # Obtener todos los resultados
-            
-            if productos:
-                logger.info(f"Se encontraron {len(productos)} productos con la descripción '{descripción}'.")
-            else:
-                # Esto no es un error, simplemente no hubo coincidencias
-                logger.info(f"No se encontró ningún producto que contenga '{descripción}'.")
-                
-            return productos # Devuelve la lista de productos (puede estar vacía)
+            return productos
 
         except mysql.connector.Error as err:
-            # Registra un error específico de MySQL
-            logger.exception(f"Error de MySQL durante la búsqueda por descripción '{descripción}':")
-            return None # Devuelve None en caso de error
-
+            logger.exception(f"Error de MySQL al buscar descripción '{descripción}':")
+            return None
         except Exception as e:
-            # Registra cualquier otro error inesperado
-            logger.exception(f"Error inesperado durante la búsqueda por descripción '{descripción}':")
-            return None # Devuelve None en caso de error
-
+            logger.exception(f"Error inesperado al buscar descripción '{descripción}':")
+            return None
         finally:
-            # Este bloque se ejecuta siempre
-            if cursor:
-                cursor.close()
-                logger.debug("Cursor cerrado.")
+            if cursor: cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
-                logger.info("Conexión a la base de datos cerrada.")
     
     def consultarProductosPorAlertaVentas(self):
         """
