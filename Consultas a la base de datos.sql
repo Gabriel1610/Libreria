@@ -65,6 +65,13 @@ SELECT * FROM PRODUCTO;
 -- Asegúrate de estar usando la base de datos correcta
 USE tienda_db;
 
+SELECT
+	*
+FROM
+	PRODUCTO
+WHERE
+	codigo = 'VAR-002';
+
 -- Inserción de múltiples productos de librería y artículos escolares
 INSERT INTO PRODUCTO 
     (codigo, nombre, descripcion, precio_venta, stock_actual, stock_minimo)
@@ -131,6 +138,14 @@ WHERE
 -- La columna 'precio_unitario' debe coincidir con el precio de venta del producto en ese momento.
 
 SELECT * FROM VENTA;
+
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE PRODUCTO 
+SET ventas_acumuladas = 0 
+WHERE ventas_acumuladas IS NULL;
+
+SET SQL_SAFE_UPDATES = 1;
 
 SELECT
 	V.id_venta,

@@ -11,6 +11,7 @@ import functools
 from tkinter import simpledialog
 import facturación
 import sys
+import MensajeEntrada
 from datetime import datetime
 import funciones_útiles
 import validación_tipo_de_datos
@@ -1359,26 +1360,133 @@ class Aplicación(tk.Tk):
             # 3. Abrir Ventana de Medio de Pago
             self.abrirVentanaMedioPago()
 
+    def solicitarDineroEfectivo(self, nombre_medio_pago):
+        """
+        Abre una ventana para ingresar cuánto dinero entregó el cliente.
+        Calcula el vuelto y valida que el monto sea suficiente.
+        """
+        # Obtener el total a pagar
+        total_venta_str = self.etiqueta_valor_total_producto.cget('text')
+        try:
+            total_venta = float(total_venta_str)
+        except ValueError:
+            total_venta = 0.0
+
+        # Crear ventana modal
+        ventana_efectivo = tk.Toplevel(self)
+        ventana_efectivo.title("Cobro en Efectivo")
+        ventana_efectivo.configure(bg="white")
+        ventana_efectivo.resizable(False, False)
+        ventana_efectivo.geometry("350x250")
+
+        # Centrar ventana
+        x = self.winfo_x() + (self.winfo_width() // 2) - 175
+        y = self.winfo_y() + (self.winfo_height() // 2) - 125
+        ventana_efectivo.geometry(f"+{x}+{y}")
+
+        # Icono
+        try:
+            if getattr(sys, 'frozen', False):
+                base_dir = sys._MEIPASS
+            else:
+                base_dir = os.path.dirname(__file__)
+            ruta_icono = os.path.join(base_dir, NOMBRE_ICONO)
+            if os.path.exists(ruta_icono):
+                ventana_efectivo.iconbitmap(ruta_icono)
+        except Exception:
+            pass
+
+        # --- INTERFAZ ---
+
+        # 1. Mostrar Total
+        lbl_total = tk.Label(ventana_efectivo, text=f"Total a Pagar: $ {total_venta:.2f}",
+                             font=('Segoe UI', 14, 'bold'), bg="white", fg=COLOR_ACENTO)
+        lbl_total.pack(pady=(20, 10))
+
+        # 2. Etiqueta "Abonó con"
+        lbl_abono = tk.Label(ventana_efectivo, text="Su pago:",
+                             font=('Segoe UI', 11), bg="white")
+        lbl_abono.pack()
+
+        # 3. Entrada de dinero (Validada)
+        var_monto_recibido = tk.StringVar()
+        entry_monto = ttk.Entry(ventana_efectivo, textvariable=var_monto_recibido,
+                                font=('Segoe UI', 12), justify='center')
+        entry_monto.pack(pady=5, padx=40, fill='x')
+        entry_monto.focus()
+
+        # --- VALIDACIÓN USANDO funciones_útiles ---
+        entry_monto.bind(EVENTO_TECLA_PRESIONADA,
+                         lambda event: funciones_útiles.controlar_caracteres_precio(
+                             var_monto_recibido, entry_monto, 10, 2, event
+                         ))
+
+        # 4. Función de Cálculo y Confirmación
+        def confirmar_cobro(event=None):
+            contenido = var_monto_recibido.get().strip()
+
+            if not contenido:
+                return  # Ignorar si está vacío
+
+            try:
+                monto_recibido = float(contenido)
+
+                # A. Validar si el dinero alcanza
+                if monto_recibido < total_venta:
+                    MensajeModerno(ventana_efectivo, "Monto insuficiente",
+                                   f"El dinero recibido ($ {monto_recibido:.2f}) es menor al total ($ {total_venta:.2f}).",
+                                   tipo="advertencia")
+                    entry_monto.selection_range(0, tk.END)
+                    entry_monto.focus()
+                    return
+
+                # B. Calcular Cambio
+                cambio = monto_recibido - total_venta
+
+                # C. Mostrar Cambio (Modal dentro de modal)
+                # Al cerrar este mensaje, se ejecutará el cierre de venta
+                MensajeModerno(ventana_efectivo, "Cambio a devolver",
+                               f"Cambio: $ {cambio:.2f}", tipo="éxito")
+
+                # D. Finalizar Venta
+                ventana_efectivo.destroy()
+                self.procesarVentaFinal(nombre_medio_pago)
+
+            except ValueError:
+                MensajeModerno(ventana_efectivo, "Error",
+                               "Monto inválido.", tipo="error")
+
+        # Vincular Enter al botón
+        entry_monto.bind('<Return>', confirmar_cobro)
+
+        # 5. Botón Cobrar
+        btn_cobrar = ttk.Button(
+            ventana_efectivo, text="Cobrar e Imprimir", command=confirmar_cobro)
+        btn_cobrar.pack(pady=20, ipadx=10)
+
+        # Modalidad
+        ventana_efectivo.transient(self)
+        ventana_efectivo.grab_set()
+        self.wait_window(ventana_efectivo)
+
     def abrirVentanaMedioPago(self):
         """Abre una ventana modal para seleccionar el medio de pago."""
 
         ventana_pago = tk.Toplevel(self)
         ventana_pago.title("Seleccionar Medio de Pago")
 
-        # --- CORRECCIÓN: Aplicar el icono ---
+        # --- Configurar Icono ---
         try:
             if getattr(sys, 'frozen', False):
                 base_dir = sys._MEIPASS
             else:
                 base_dir = os.path.dirname(__file__)
-
             ruta_icono = os.path.join(base_dir, NOMBRE_ICONO)
-
             if os.path.exists(ruta_icono):
                 ventana_pago.iconbitmap(ruta_icono)
         except Exception:
-            pass  # Si falla, usa el icono por defecto sin romper el programa
-        # ------------------------------------
+            pass
+        # ------------------------
 
         ventana_pago.geometry("350x200")
         ventana_pago.resizable(False, False)
@@ -1394,7 +1502,7 @@ class Aplicación(tk.Tk):
                         background="white", font=('Segoe UI', 11))
         lbl.pack(pady=(20, 10))
 
-        # Obtener medios de la BD (devuelve [(nombre, facturar), ...])
+        # Obtener medios de la BD
         medios_raw = self.base_de_datos.consultarMediosPago()
         nombres_medios = [m[0] for m in medios_raw] if medios_raw else []
 
@@ -1405,7 +1513,7 @@ class Aplicación(tk.Tk):
 
         # Botón Finalizar (Deshabilitado al inicio)
         botón_finalizar = ttk.Button(
-            ventana_pago, text="Finalizar", state="disabled", style="TButton")
+            ventana_pago, text="Continuar", state="disabled", style="TButton")
         botón_finalizar.pack(pady=20)
 
         # Función para habilitar botón
@@ -1414,12 +1522,19 @@ class Aplicación(tk.Tk):
 
         combo_medios.bind("<<ComboboxSelected>>", habilitar_boton)
 
-        # Función para procesar la venta al hacer clic
+        # --- LÓGICA PRINCIPAL DE SELECCIÓN ---
         def confirmar_pago():
             medio_seleccionado = combo_medios.get()
-            ventana_pago.destroy()  # Cerrar ventana
-            # Llamar a la lógica de guardado pasando el medio
-            self.procesarVentaFinal(medio_seleccionado)
+            ventana_pago.destroy()  # Cerrar ventana de selección
+
+            # Lógica para Efectivo vs Otros
+            if medio_seleccionado.lower() == "efectivo":
+                # Si es efectivo, pedimos cuánto abonó
+                self.solicitarDineroEfectivo(medio_seleccionado)
+            else:
+                # Si es otro medio, el cambio es 0
+                MensajeModerno(self, "Cambio", "Cambio: $ 0,00", tipo="info")
+                self.procesarVentaFinal(medio_seleccionado)
 
         botón_finalizar.config(command=confirmar_pago)
 
@@ -2063,8 +2178,7 @@ class Aplicación(tk.Tk):
             ventas_acum_str = self.ventas_acumuladas.get().strip()
             umbral_str = self.umbral.get().strip()
 
-            ventas_acumuladas = int(
-                ventas_acum_str) if ventas_acum_str else None
+            ventas_acumuladas = int(ventas_acum_str) if ventas_acum_str else 0
             umbral_ventas = int(umbral_str) if umbral_str else None
 
             # 3. Crear lista de datos (Nota: ingresarProducto actualmente solo acepta 6 campos)
@@ -2247,6 +2361,8 @@ class Aplicación(tk.Tk):
                                                           padx=(
                                                               SEPARACIÓN_ENTRE_PANELES, 0),
                                                           sticky='ew')
+        self.tabla_carrito.bind("<<TreeviewSelect>>",
+                                self.seleccionarItemCarrito)
 
     def actualizarTablaStockAlerta(self):
         funciones_útiles.borrarTodasLasFilas(self.tabla_stock_alerta)
@@ -2327,6 +2443,29 @@ class Aplicación(tk.Tk):
                     '', tk.END, values=datos_para_tabla, tags=(tag_fila,))
 
             self.aplicarOrdenGuardado(self.tabla_productos, 'productos')
+
+    def seleccionarItemCarrito(self, event):
+        """
+        Al hacer clic en una fila del carrito, copia el código del producto
+        al campo de entrada de 'Venta de producto'.
+        """
+        seleccion = self.tabla_carrito.selection()
+
+        if seleccion:
+            # Obtener datos de la fila seleccionada
+            item = self.tabla_carrito.item(seleccion[0])
+            valores = item['values']
+
+            # El código está en la columna 0
+            codigo = valores[0]
+
+            # Asignar al campo de texto (Variable StringVar)
+            self.código_venta.set(codigo)
+
+            # Opcional: Poner el foco en el campo de cantidad para agilizar
+            # self.entrada_cantidad_venta.focus()
+            # O dejar el foco en el código:
+            self.entrada_código_producto_venta.focus()
 
     def eliminarVenta(self):
         """
@@ -2585,25 +2724,19 @@ class Aplicación(tk.Tk):
         # 1. Obtener CUIT
         cuit = self.var_cuit.get().strip()
         if not cuit:
-            MensajeModerno(
-                self, "Falta CUIT", "Por favor, ingrese primero el CUIT en el campo correspondiente.", tipo="advertencia")
+            MensajeModerno(self, "Falta CUIT", "Por favor, ingrese primero el CUIT en el campo correspondiente.", tipo="advertencia")
             self.entry_cuit.focus()
             return
 
-        # 2. Pedir Nombre/Razón Social
-        # Usamos parent=self para que este diálogo salga centrado
-        nombre_empresa = simpledialog.askstring("Datos del Certificado",
-                                                "Ingrese el Nombre o Razón Social para el certificado:",
-                                                parent=self)
-
-        # --- TRUCO CLAVE: Forzar actualización inmediata ---
-        # Esto obliga a Tkinter a recalcular la geometría de la ventana principal
-        # inmediatamente después de cerrar el diálogo anterior.
-        self.update()
-        # ---------------------------------------------------
-
+        # 2. Pedir Nombre/Razón Social (USANDO EL NUEVO ESTILO MODERNO)
+        ventana_input = MensajeEntrada(self, 
+                                       "Datos del Certificado", 
+                                       "Ingrese el Nombre o Razón Social para el certificado:")
+        
+        nombre_empresa = ventana_input.resultado # Obtenemos lo que escribió
+        
         if not nombre_empresa:
-            return  # Usuario canceló
+            return # Usuario canceló o lo dejó vacío
 
         try:
             # 3. Definir ruta de guardado
@@ -2633,7 +2766,7 @@ class Aplicación(tk.Tk):
 
             # 5. Generar CSR
             common_name = f"sistema_{cuit}"
-
+            
             csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
                 x509.NameAttribute(NameOID.COMMON_NAME, common_name),
                 x509.NameAttribute(NameOID.ORGANIZATION_NAME, nombre_empresa),
@@ -2648,7 +2781,7 @@ class Aplicación(tk.Tk):
             # 6. Autocompletar el campo Key en la interfaz
             self.var_key.set(ruta_key)
 
-            # 7. Mensaje de Éxito (USANDO MENSAJE MODERNO)
+            # 7. Mensaje de Éxito
             mensaje = (
                 f"✅ Archivos generados correctamente en:\n{base_dir}\n\n"
                 f"1. Clave Privada: {nombre_key} (Cargada autom.)\n"
@@ -2657,15 +2790,11 @@ class Aplicación(tk.Tk):
                 "Ingrese a la web de AFIP con Clave Fiscal, vaya a 'Administración de Certificados Digitales' "
                 f"y suba el archivo '{nombre_csr}' para obtener su certificado digital (.crt)."
             )
-
-            # Segunda actualización para asegurar que MensajeModerno tenga
-            # las coordenadas exactas antes de dibujarse.
-            self.update()
+            
             MensajeModerno(self, "Generación Exitosa", mensaje, tipo="éxito")
 
         except Exception as e:
-            MensajeModerno(
-                self, "Error", f"Fallo al generar certificados: {str(e)}", tipo="error")
+            MensajeModerno(self, "Error", f"Fallo al generar certificados: {str(e)}", tipo="error")
 
     def crearLabelFrameFacturacion(self):
         """

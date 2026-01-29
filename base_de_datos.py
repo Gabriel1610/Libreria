@@ -9,6 +9,7 @@ NOMBRE_ARCHIVO_CONFIG = 'config.ini'
 CANT_CONDICIONES = 4
 MÁX_INTENTOS = 5
 
+
 class BaseDeDatos:
 
     def abrir(self):
@@ -29,25 +30,31 @@ class BaseDeDatos:
         """
         # Obtiene un logger para esta clase.  El nombre suele ser __name__ (el nombre del módulo).
         logger = logging.getLogger(__name__)
-        config = self.obtener_configuración()  # Obtiene la configuración desde el archivo .ini
-        hostt = config['database']['host']      # Lee el host del archivo de configuración
+        # Obtiene la configuración desde el archivo .ini
+        config = self.obtener_configuración()
+        # Lee el host del archivo de configuración
+        hostt = config['database']['host']
         usuario = config['database']['user']    # Lee el usuario
-        contraseña = config['database']['password'] # Lee la contraseña
-        base_de_datos = config['database']['database'] # Lee el nombre de la base de datos
+        contraseña = config['database']['password']  # Lee la contraseña
+        # Lee el nombre de la base de datos
+        base_de_datos = config['database']['database']
 
         # Intenta establecer la conexión.  Es crucial manejar los posibles errores aquí.
         try:
-            conexión = mysql.connector.connect(host=hostt, 
-                                               user=usuario, 
-                                               passwd=contraseña, 
+            conexión = mysql.connector.connect(host=hostt,
+                                               user=usuario,
+                                               passwd=contraseña,
                                                database=base_de_datos
                                                )
-            logger.info("Conexión a la base de datos establecida exitosamente.")  # Mensaje de éxito
-            return conexión # Retorna la conexión abierta
+            # Mensaje de éxito
+            logger.info(
+                "Conexión a la base de datos establecida exitosamente.")
+            return conexión  # Retorna la conexión abierta
         except mysql.connector.Error as err:
-            logger.exception("Error al conectar a la base de datos:")  # Usamos exception para el traceback
+            # Usamos exception para el traceback
+            logger.exception("Error al conectar a la base de datos:")
             raise  # Relanzamos la excepción.
-    
+
     def obtener_configuración(self):
         """
         Lee la configuración de la base de datos desde el archivo 'config.ini'.
@@ -63,20 +70,25 @@ class BaseDeDatos:
         """
         config = configparser.ConfigParser()
         try:
-            config.read(NOMBRE_ARCHIVO_CONFIG, encoding='utf-8')  # Lee el archivo
+            config.read(NOMBRE_ARCHIVO_CONFIG,
+                        encoding='utf-8')  # Lee el archivo
             if not config.sections():  # Verifica si el archivo está vacío o no contiene secciones.
-                raise configparser.Error(f"El archivo de configuración '{NOMBRE_ARCHIVO_CONFIG}' está vacío o no tiene secciones.")
+                raise configparser.Error(
+                    f"El archivo de configuración '{NOMBRE_ARCHIVO_CONFIG}' está vacío o no tiene secciones.")
 
-            #Verificar que las secciones y opciones necesarias existan
+            # Verificar que las secciones y opciones necesarias existan
             if 'database' not in config:
-                raise configparser.Error("Falta la sección 'database' en el archivo de configuración.")
+                raise configparser.Error(
+                    "Falta la sección 'database' en el archivo de configuración.")
             required_options = ['host', 'user', 'password', 'database']
             for option in required_options:
                 if option not in config['database']:
-                    raise configparser.Error(f"Falta la opción '{option}' en la sección 'database' del archivo de configuración.")
+                    raise configparser.Error(
+                        f"Falta la opción '{option}' en la sección 'database' del archivo de configuración.")
 
         except FileNotFoundError:
-            print(f"Error: No se encontró el archivo de configuración '{NOMBRE_ARCHIVO_CONFIG}'.")
+            print(
+                f"Error: No se encontró el archivo de configuración '{NOMBRE_ARCHIVO_CONFIG}'.")
             raise
         except configparser.Error as e:
             print(f"Error al leer el archivo de configuración: {e}")
@@ -95,9 +107,10 @@ class BaseDeDatos:
             intentos (int): Número máximo de reintentos en caso de deadlock.
         """
         intento = 0
-        logger = logging.getLogger(__name__)  # Obtener el logger para este módulo
+        # Obtener el logger para este módulo
+        logger = logging.getLogger(__name__)
         reintentar = True
-        
+
         # Declarar cursor y conexión fuera del try para que existan en el finally
         conexión = None
         cursor = None
@@ -106,42 +119,46 @@ class BaseDeDatos:
             try:
                 conexión = self.abrir()  # Abrir la conexión
                 cursor = conexión.cursor()
-                
+
                 # Consulta adaptada a la tabla PRODUCTO
                 consulta = """INSERT INTO PRODUCTO(codigo, nombre, descripcion, precio_venta, ventas_acumuladas, umbral_ventas)
                               VALUES(%s, CONCAT(UCASE(LEFT(%s, 1)), SUBSTRING(%s, 2)), CONCAT(UCASE(LEFT(%s, 1)), SUBSTRING(%s, 2)), %s, %s, %s);
                            """
-                
+
                 cursor.execute(consulta, datos)
                 conexión.commit()  # confirmar la transacción
                 reintentar = False
-                logger.info(f"Producto '{datos[1]}' (Código: {datos[0]}) ingresado exitosamente.")
+                logger.info(
+                    f"Producto '{datos[1]}' (Código: {datos[0]}) ingresado exitosamente.")
 
             except mysql.connector.errors.InternalError as err:
                 intento += 1
                 if err.errno == 1213:  # Deadlock
-                    logger.warning(f"Deadlock detectado al ingresar producto. Intento {intento}/{intentos}.")
+                    logger.warning(
+                        f"Deadlock detectado al ingresar producto. Intento {intento}/{intentos}.")
                     if intento < intentos:
                         time.sleep(1)  # espera antes de reintentar
                         continue
                     else:
-                        logger.error("No se pudo resolver el deadlock después de varios intentos.")
+                        logger.error(
+                            "No se pudo resolver el deadlock después de varios intentos.")
                         raise
                 else:
                     raise  # Relanzar otros InternalError
 
             except mysql.connector.Error as err:
                 # Error 1062: Código duplicado
-                if err.errno == 1062: 
+                if err.errno == 1062:
                     mensaje_error = f"Error: Ya existe un producto con ese código. (Detalle: {err.msg})"
                     logger.warning(mensaje_error)
                     raise ValueError(f"Ya existe un producto con ese código.")
-                
+
                 # --- CAPTURA DE ERROR DE RANGO ACTUALIZADA ---
                 # Error 1264: Valor fuera de rango (número muy grande)
                 elif err.errno == 1264:
                     columna = "desconocida"
-                    mensaje_error_str = str(err).lower() # Convertimos a minúsculas para buscar mejor
+                    # Convertimos a minúsculas para buscar mejor
+                    mensaje_error_str = str(err).lower()
 
                     if "precio_venta" in mensaje_error_str:
                         columna = "Precio"
@@ -149,7 +166,7 @@ class BaseDeDatos:
                         columna = "Ventas Acumuladas"
                     elif "umbral_ventas" in mensaje_error_str:
                         columna = "Umbral de Ventas"
-                    
+
                     mensaje_usuario = f"El valor ingresado en '{columna}' es demasiado grande para el sistema."
                     logger.warning(f"Error de rango en BD: {err.msg}")
                     raise ValueError(mensaje_usuario)
@@ -157,12 +174,14 @@ class BaseDeDatos:
 
                 else:
                     # Registra cualquier otro error de MySQL
-                    logger.exception("Error de MySQL durante el ingreso del producto:")
+                    logger.exception(
+                        "Error de MySQL durante el ingreso del producto:")
                     raise
 
             except Exception as e:
                 # Registra cualquier otro error inesperado
-                logger.exception("Error inesperado durante el ingreso del producto:")
+                logger.exception(
+                    "Error inesperado durante el ingreso del producto:")
                 raise
 
             finally:
@@ -180,17 +199,17 @@ class BaseDeDatos:
         """
         Obtiene una lista plana con todos los detalles de todas las ventas
         para exportar a Excel.
-        
+
         Retorna: (id_venta, fecha, total_venta, nombre_prod, precio_unit, cantidad, subtotal)
         """
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Consulta optimizada:
             # 1. Calcula el total de la venta en una subconsulta
             # 2. Une Venta con Detalle y Producto
@@ -210,7 +229,7 @@ class BaseDeDatos:
                 JOIN PRODUCTO P ON DV.id_producto = P.id_producto
                 ORDER BY V.fecha_hora DESC, V.id_venta DESC;
             """
-            
+
             cursor.execute(consulta)
             filas = cursor.fetchall()
             return filas
@@ -219,7 +238,8 @@ class BaseDeDatos:
             logger.exception("Error MySQL al exportar Excel:")
             return None
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
 
@@ -243,8 +263,8 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()  # Abrir la conexión
             cursor = conexión.cursor()
-            
-            # Consulta adaptada para buscar por ID y devolver las mismas columnas 
+
+            # Consulta adaptada para buscar por ID y devolver las mismas columnas
             # que buscarProductoPorCódigo para mantener consistencia.
             consulta = """SELECT codigo, nombre, 
                                  precio_venta, ventas_acumuladas, umbral_ventas, 
@@ -252,28 +272,31 @@ class BaseDeDatos:
                           FROM PRODUCTO
                           WHERE id_producto = %s;
                        """
-            
+
             # Ejecutar la consulta pasando el 'id_producto' como una tupla
             cursor.execute(consulta, (id_producto,))
-            
+
             # Obtener el único resultado (o None si no se encontró)
-            producto = cursor.fetchone() 
-            
+            producto = cursor.fetchone()
+
             if producto:
                 logger.info(f"Producto encontrado con ID: {id_producto}.")
             else:
-                logger.warning(f"No se encontró ningún producto con ID: {id_producto}.")
-                
-            return producto # Devuelve la tupla del producto o None
+                logger.warning(
+                    f"No se encontró ningún producto con ID: {id_producto}.")
+
+            return producto  # Devuelve la tupla del producto o None
 
         except mysql.connector.Error as err:
             # Registra un error específico de MySQL
-            logger.exception(f"Error de MySQL durante la búsqueda del producto con ID {id_producto}:")
+            logger.exception(
+                f"Error de MySQL durante la búsqueda del producto con ID {id_producto}:")
             return None
 
         except Exception as e:
             # Registra cualquier otro error inesperado
-            logger.exception(f"Error inesperado durante la búsqueda del producto con ID {id_producto}:")
+            logger.exception(
+                f"Error inesperado durante la búsqueda del producto con ID {id_producto}:")
             return None
 
         finally:
@@ -298,7 +321,7 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             consulta = """SELECT 
                                 P1.codigo, 
                                 P1.nombre, 
@@ -313,15 +336,16 @@ class BaseDeDatos:
                           LEFT JOIN PRODUCTO AS P2 ON P1.id_alternativa = P2.id_producto
                           WHERE P1.codigo = %s;
                        """
-            
+
             cursor.execute(consulta, (código,))
-            producto = cursor.fetchone() 
-            
+            producto = cursor.fetchone()
+
             if producto:
                 logger.info(f"Producto encontrado con código: {código}.")
             else:
-                logger.warning(f"No se encontró ningún producto con código: {código}.")
-                
+                logger.warning(
+                    f"No se encontró ningún producto con código: {código}.")
+
             return producto
 
         except mysql.connector.Error as err:
@@ -331,7 +355,8 @@ class BaseDeDatos:
             logger.exception(f"Error inesperado al buscar código {código}:")
             return None
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
 
@@ -346,7 +371,7 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             término_búsqueda = f"%{nombre.lower()}%"
 
             consulta = """SELECT 
@@ -365,11 +390,11 @@ class BaseDeDatos:
                             AND LOWER(P1.nombre COLLATE utf8mb4_bin) LIKE %s
                           ORDER BY P1.nombre; 
                        """
-            
+
             cursor.execute(consulta, (término_búsqueda,))
-            productos = cursor.fetchall() 
-            
-            return productos 
+            productos = cursor.fetchall()
+
+            return productos
 
         except mysql.connector.Error as err:
             logger.exception(f"Error de MySQL al buscar nombre '{nombre}':")
@@ -378,7 +403,8 @@ class BaseDeDatos:
             logger.exception(f"Error inesperado al buscar nombre '{nombre}':")
             return None
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
 
@@ -393,7 +419,7 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             término_búsqueda = f"%{descripción.lower()}%"
 
             consulta = """SELECT 
@@ -412,23 +438,26 @@ class BaseDeDatos:
                             AND LOWER(P1.descripcion COLLATE utf8mb4_bin) LIKE %s
                           ORDER BY P1.nombre; 
                        """
-            
+
             cursor.execute(consulta, (término_búsqueda,))
-            productos = cursor.fetchall() 
-            
+            productos = cursor.fetchall()
+
             return productos
 
         except mysql.connector.Error as err:
-            logger.exception(f"Error de MySQL al buscar descripción '{descripción}':")
+            logger.exception(
+                f"Error de MySQL al buscar descripción '{descripción}':")
             return None
         except Exception as e:
-            logger.exception(f"Error inesperado al buscar descripción '{descripción}':")
+            logger.exception(
+                f"Error inesperado al buscar descripción '{descripción}':")
             return None
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
-    
+
     def consultarProductosPorAlertaVentas(self):
         """
         Devuelve una lista de productos (Código, Nombre) que han superado 
@@ -438,11 +467,11 @@ class BaseDeDatos:
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Consulta ajustada:
             # 1. Filtra 'eliminado = 0'.
             # 2. Filtra 'umbral_ventas IS NOT NULL' y mayor a 0.
@@ -460,13 +489,14 @@ class BaseDeDatos:
                           ORDER BY
                              (COALESCE(ventas_acumuladas, 0) / umbral_ventas) DESC;
                        """
-            
+
             cursor.execute(consulta)
             filas = cursor.fetchall()
-            
-            logger.info(f"Se consultaron {len(filas)} productos en alerta de ventas.")
+
+            logger.info(
+                f"Se consultaron {len(filas)} productos en alerta de ventas.")
             return filas
-        
+
         except mysql.connector.Error as err:
             logger.exception("Error de MySQL al consultar alertas:")
             return None
@@ -491,11 +521,11 @@ class BaseDeDatos:
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Consulta actualizada:
             # 1. Agregamos CHAR_LENGTH para obtener la cantidad de caracteres de la descripción.
             # 2. Usamos COALESCE para evitar problemas si la descripción es NULL (devuelve 0).
@@ -515,12 +545,12 @@ class BaseDeDatos:
                 WHERE P1.eliminado = 0
                 ORDER BY P1.nombre; 
             """
-            
+
             cursor.execute(consulta)
             filas = cursor.fetchall()
             logger.info(f"Se consultaron {len(filas)} productos activos.")
             return filas
-            
+
         except mysql.connector.Error as err:
             logger.exception("Error de MySQL al consultar los productos:")
             return None
@@ -529,7 +559,8 @@ class BaseDeDatos:
             return None
 
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
 
@@ -544,19 +575,22 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             consulta = "UPDATE PRODUCTO SET ventas_acumuladas = 0 WHERE codigo = %s"
             cursor.execute(consulta, (codigo,))
             conexión.commit()
-            
-            logger.info(f"Ventas acumuladas reseteadas para producto: {codigo}")
+
+            logger.info(
+                f"Ventas acumuladas reseteadas para producto: {codigo}")
 
         except mysql.connector.Error as err:
             logger.exception("Error de MySQL al resetear ventas:")
             raise
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
 
     def modificarUnProducto(self, datos, intentos=MÁX_INTENTOS):
         """
@@ -571,7 +605,7 @@ class BaseDeDatos:
         reintentar = True
         conexión = None
         cursor = None
-        
+
         # El código de la alternativa está en la posición 6
         # Si está vacío, pasamos None para que la subconsulta no falle o lo manejamos en SQL
         codigo_alternativa = datos[6] if datos[6] else None
@@ -580,7 +614,7 @@ class BaseDeDatos:
             try:
                 conexión = self.abrir()
                 cursor = conexión.cursor()
-                
+
                 # Consulta actualizada con subconsulta para id_alternativa
                 # Si el código de alternativa es NULL, id_alternativa será NULL
                 consulta = """UPDATE PRODUCTO
@@ -593,35 +627,37 @@ class BaseDeDatos:
                                   id_alternativa = (SELECT id_producto FROM (SELECT id_producto FROM PRODUCTO WHERE codigo = %s) AS sub)
                               WHERE id_producto = %s;
                            """
-                
+
                 # Nota sobre la subconsulta anidada (SELECT ... FROM (SELECT ...)):
                 # En MySQL no puedes seleccionar de la misma tabla que estás actualizando en una subconsulta directa.
                 # El truco "FROM (SELECT ...) AS sub" evita el error 1093.
-                
+
                 # Ajustamos los parámetros para la consulta
                 params = (
-                    datos[0], # codigo
-                    datos[1], # nombre
-                    datos[2], # descripcion
-                    datos[3], # precio
-                    datos[4], # ventas
-                    datos[5], # umbral
-                    codigo_alternativa, # codigo alternativa (para la subconsulta)
+                    datos[0],  # codigo
+                    datos[1],  # nombre
+                    datos[2],  # descripcion
+                    datos[3],  # precio
+                    datos[4],  # ventas
+                    datos[5],  # umbral
+                    # codigo alternativa (para la subconsulta)
+                    codigo_alternativa,
                     datos[7]  # id_producto (WHERE)
                 )
-                
+
                 cursor.execute(consulta, params)
                 conexión.commit()
                 reintentar = False
-                logger.info(f"Producto ID: {datos[7]} modificado exitosamente.")
+                logger.info(
+                    f"Producto ID: {datos[7]} modificado exitosamente.")
 
             except mysql.connector.Error as err:
                 # (Mismo manejo de errores que tenías antes...)
-                if err.errno == 1062: 
+                if err.errno == 1062:
                     raise ValueError(f"Ya existe un producto con ese código.")
                 elif err.errno == 1264:
-                     # ... (lógica de rango) ...
-                     raise ValueError("Valor fuera de rango.")
+                    # ... (lógica de rango) ...
+                    raise ValueError("Valor fuera de rango.")
                 else:
                     logger.exception("Error MySQL al modificar:")
                     raise
@@ -635,7 +671,7 @@ class BaseDeDatos:
                     # Cierra la conexión
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
-    
+
     def buscarVentaPorID(self, id_venta):
         """
         Busca una venta específica por su ID y calcula su total.
@@ -645,11 +681,11 @@ class BaseDeDatos:
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Consulta filtrada por ID
             consulta = """
                 SELECT
@@ -666,21 +702,24 @@ class BaseDeDatos:
                 WHERE
                     V.id_venta = %s;
             """
-            
+
             cursor.execute(consulta, (id_venta,))
             filas = cursor.fetchall()
             return filas
-        
+
         except mysql.connector.Error as err:
             logger.exception(f"Error de MySQL al buscar venta ID {id_venta}:")
             return None
         except Exception as e:
-            logger.exception(f"Error inesperado al buscar venta ID {id_venta}: {e}")
+            logger.exception(
+                f"Error inesperado al buscar venta ID {id_venta}: {e}")
             return None
 
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
 
     def modificarMedioPago(self, nombre_original, nuevo_nombre, nuevo_facturar):
         """
@@ -693,34 +732,40 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Obtener ID del medio original
-            cursor.execute("SELECT id_medio_pago FROM MEDIO_PAGO WHERE nombre = %s", (nombre_original,))
+            cursor.execute(
+                "SELECT id_medio_pago FROM MEDIO_PAGO WHERE nombre = %s", (nombre_original,))
             resultado = cursor.fetchone()
-            
+
             if not resultado:
-                raise ValueError(f"No se encontró el medio de pago '{nombre_original}'.")
-            
+                raise ValueError(
+                    f"No se encontró el medio de pago '{nombre_original}'.")
+
             id_medio = resultado[0]
 
             # Actualizar
             consulta = """UPDATE MEDIO_PAGO 
                           SET nombre = %s, facturar = %s 
                           WHERE id_medio_pago = %s"""
-            
+
             cursor.execute(consulta, (nuevo_nombre, nuevo_facturar, id_medio))
             conexión.commit()
-            logger.info(f"Medio de pago '{nombre_original}' actualizado a '{nuevo_nombre}'.")
+            logger.info(
+                f"Medio de pago '{nombre_original}' actualizado a '{nuevo_nombre}'.")
 
         except mysql.connector.Error as err:
-            if err.errno == 1062: # Duplicado
-                raise ValueError(f"Ya existe otro medio de pago con el nombre '{nuevo_nombre}'.")
+            if err.errno == 1062:  # Duplicado
+                raise ValueError(
+                    f"Ya existe otro medio de pago con el nombre '{nuevo_nombre}'.")
             else:
                 logger.exception("Error de MySQL al modificar medio de pago:")
                 raise
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
 
     def consultarDetalleVenta(self, id_venta):
         """
@@ -738,11 +783,11 @@ class BaseDeDatos:
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Consulta con JOIN para obtener código y nombre del producto
             consulta = """
                 SELECT
@@ -758,23 +803,27 @@ class BaseDeDatos:
                 WHERE
                     DV.id_venta = %s;
             """
-            
+
             cursor.execute(consulta, (id_venta,))
             filas = cursor.fetchall()
-            
-            logger.info(f"Se consultaron {len(filas)} detalles para la Venta ID: {id_venta}.")
+
+            logger.info(
+                f"Se consultaron {len(filas)} detalles para la Venta ID: {id_venta}.")
             return filas
-        
+
         except mysql.connector.Error as err:
-            logger.exception(f"Error de MySQL al consultar detalles de Venta ID: {id_venta}:")
+            logger.exception(
+                f"Error de MySQL al consultar detalles de Venta ID: {id_venta}:")
             return None
-        
+
         except Exception as e:
-            logger.exception(f"Error inesperado al consultar detalles de Venta ID: {id_venta}: {e}")
+            logger.exception(
+                f"Error inesperado al consultar detalles de Venta ID: {id_venta}: {e}")
             return None
 
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
 
@@ -790,7 +839,7 @@ class BaseDeDatos:
         reintentar = True
         conexión = None
         cursor = None
-        
+
         # [cantidad_vendida, codigo_producto]
         cantidad_vendida = datos[0]
         código_producto = datos[1]
@@ -799,34 +848,39 @@ class BaseDeDatos:
             try:
                 conexión = self.abrir()
                 cursor = conexión.cursor()
-                
+
                 # SUMAMOS la cantidad vendida al acumulador
                 consulta = """UPDATE PRODUCTO
-                              SET ventas_acumuladas = ventas_acumuladas + %s
+                              SET ventas_acumuladas = COALESCE(ventas_acumuladas, 0) + %s
                               WHERE codigo = %s;
                            """
-                
+
                 cursor.execute(consulta, (cantidad_vendida, código_producto))
-                
+
                 if cursor.rowcount == 0:
                     reintentar = False
-                    logger.warning(f"No se encontró código: {código_producto}.")
-                    raise ValueError(f"El producto (Código: {código_producto}) no existe.")
-                
+                    logger.warning(
+                        f"No se encontró código: {código_producto}.")
+                    raise ValueError(
+                        f"El producto (Código: {código_producto}) no existe.")
+
                 conexión.commit()
                 reintentar = False
-                logger.info(f"Ventas acumuladas actualizadas para {código_producto}. +{cantidad_vendida}")
+                logger.info(
+                    f"Ventas acumuladas actualizadas para {código_producto}. +{cantidad_vendida}")
 
             # ... (Mismos excepts de Deadlock y Error MySQL que tenías antes) ...
             except mysql.connector.errors.InternalError as err:
                 # Copiar lógica de deadlock existente...
-                pass # (Usa tu código anterior aquí)
+                pass  # (Usa tu código anterior aquí)
             except Exception as e:
                 logger.exception("Error actualizando ventas:")
                 raise
             finally:
-                if cursor: cursor.close()
-                if conexión and conexión.is_connected(): conexión.close()
+                if cursor:
+                    cursor.close()
+                if conexión and conexión.is_connected():
+                    conexión.close()
 
     def ingresarDetalleVenta(self, datos, intentos=MÁX_INTENTOS):
         """
@@ -840,9 +894,10 @@ class BaseDeDatos:
             intentos (int): Número máximo de reintentos en caso de deadlock.
         """
         intento = 0
-        logger = logging.getLogger(__name__)  # Obtener el logger para este módulo
+        # Obtener el logger para este módulo
+        logger = logging.getLogger(__name__)
         reintentar = True
-        
+
         # Declarar cursor y conexión fuera del try
         conexión = None
         cursor = None
@@ -851,54 +906,61 @@ class BaseDeDatos:
             try:
                 conexión = self.abrir()  # Abrir la conexión
                 cursor = conexión.cursor()
-                
+
                 # --- CONSULTA MODIFICADA ---
                 # Ahora usa una subconsulta para encontrar el id_producto
                 # a partir del código_producto (datos[1])
                 consulta = """INSERT INTO DETALLE_VENTA(id_venta, id_producto, cantidad, precio_unitario)
                               VALUES (%s, (SELECT id_producto FROM PRODUCTO WHERE codigo = %s), %s, %s);
                            """
-                
+
                 cursor.execute(consulta, datos)
                 conexión.commit()  # Confirmar la transacción
                 reintentar = False
-                logger.info(f"Detalle de Venta (Venta ID: {datos[0]}, Producto Código: {datos[1]}) ingresado.")
+                logger.info(
+                    f"Detalle de Venta (Venta ID: {datos[0]}, Producto Código: {datos[1]}) ingresado.")
 
             except mysql.connector.errors.InternalError as err:
                 intento += 1
                 if err.errno == 1213:  # Deadlock
-                    logger.warning(f"Deadlock detectado al ingresar detalle de venta. Intento {intento}/{intentos}.")
+                    logger.warning(
+                        f"Deadlock detectado al ingresar detalle de venta. Intento {intento}/{intentos}.")
                     if intento < intentos:
                         time.sleep(1)  # espera antes de reintentar
                         continue
                     else:
-                        logger.error("No se pudo resolver el deadlock al ingresar detalle de venta.")
+                        logger.error(
+                            "No se pudo resolver el deadlock al ingresar detalle de venta.")
                         raise
                 else:
                     raise  # Relanzar otros InternalError
 
             except mysql.connector.Error as err:
                 # Error 1062: PRIMARY KEY (id_venta, id_producto) duplicada
-                if err.errno == 1062: 
+                if err.errno == 1062:
                     mensaje_error = f"Error: El producto (Código: {datos[1]}) ya existe en esta venta (ID: {datos[0]})."
                     logger.warning(mensaje_error)
                     # Lanza un error simple que la UI pueda capturar
-                    raise ValueError(f"Este producto (Código: {datos[1]}) ya está en el carrito.")
-                
+                    raise ValueError(
+                        f"Este producto (Código: {datos[1]}) ya está en el carrito.")
+
                 # Error 1452: Foreign Key constraint fails (id_venta o id_producto no existen)
                 elif err.errno == 1452:
                     mensaje_error = f"Error de FK: No se encontró la Venta (ID: {datos[0]}) o el Producto (Código: {datos[1]})."
                     logger.error(mensaje_error)
-                    raise ValueError(f"Error: El producto con código '{datos[1]}' o la venta no son válidos.")
+                    raise ValueError(
+                        f"Error: El producto con código '{datos[1]}' o la venta no son válidos.")
 
                 else:
                     # Registra cualquier otro error de MySQL
-                    logger.exception("Error de MySQL durante el ingreso del detalle de venta:")
-                    raise # Relanza la excepción original
+                    logger.exception(
+                        "Error de MySQL durante el ingreso del detalle de venta:")
+                    raise  # Relanza la excepción original
 
             except Exception as e:
                 # Registra cualquier otro error inesperado
-                logger.exception("Error inesperado durante el ingreso del detalle de venta:")
+                logger.exception(
+                    "Error inesperado durante el ingreso del detalle de venta:")
                 raise
 
             finally:
@@ -909,7 +971,7 @@ class BaseDeDatos:
                 if conexión and conexión.is_connected():
                     conexión.close()
                     logger.info("Conexión a la base de datos cerrada.")
-    
+
     # (Después de la función eliminarProductoPorID)
 
     def eliminarVentaPorID(self, datos, intentos=MÁX_INTENTOS):
@@ -926,43 +988,48 @@ class BaseDeDatos:
         intento = 0
         logger = logging.getLogger(__name__)  # Obtener el logger
         reintentar = True
-        
+
         conexión = None
         cursor = None
-        
-        id_venta_a_eliminar = datos[0] 
+
+        id_venta_a_eliminar = datos[0]
 
         while intento < intentos and reintentar:
             try:
                 conexión = self.abrir()
                 cursor = conexión.cursor()
-                
+
                 consulta = """DELETE FROM VENTA WHERE id_venta = %s;"""
-                
+
                 cursor.execute(consulta, datos)
                 conexión.commit()
                 reintentar = False
-                logger.info(f"Venta ID: {id_venta_a_eliminar} eliminada exitosamente (con CASCADE).")
+                logger.info(
+                    f"Venta ID: {id_venta_a_eliminar} eliminada exitosamente (con CASCADE).")
 
             except mysql.connector.errors.InternalError as err:
                 intento += 1
                 if err.errno == 1213:  # Deadlock
-                    logger.warning(f"Deadlock detectado al eliminar Venta ID: {id_venta_a_eliminar}. Intento {intento}/{intentos}.")
+                    logger.warning(
+                        f"Deadlock detectado al eliminar Venta ID: {id_venta_a_eliminar}. Intento {intento}/{intentos}.")
                     if intento < intentos:
                         time.sleep(1)
                         continue
                     else:
-                        logger.error("No se pudo resolver el deadlock al eliminar Venta.")
+                        logger.error(
+                            "No se pudo resolver el deadlock al eliminar Venta.")
                         raise
                 else:
                     raise
 
             except mysql.connector.Error as err:
-                logger.exception(f"Error de MySQL durante la eliminación de Venta ID: {id_venta_a_eliminar}:")
+                logger.exception(
+                    f"Error de MySQL durante la eliminación de Venta ID: {id_venta_a_eliminar}:")
                 raise
 
             except Exception as e:
-                logger.exception(f"Error inesperado durante la eliminación de Venta ID: {id_venta_a_eliminar}:")
+                logger.exception(
+                    f"Error inesperado durante la eliminación de Venta ID: {id_venta_a_eliminar}:")
                 raise
 
             finally:
@@ -970,11 +1037,11 @@ class BaseDeDatos:
                     cursor.close()
                 if conexión and conexión.is_connected():
                     conexión.close()
-    
+
     def verificarEstadoMedioPago(self, nombre):
         """
         Busca si existe un medio de pago por nombre y devuelve su estado.
-        
+
         Returns:
             tuple: (id_medio_pago, eliminado) si existe.
             None: si no existe.
@@ -986,19 +1053,21 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             consulta = "SELECT id_medio_pago, eliminado FROM MEDIO_PAGO WHERE nombre = %s"
             cursor.execute(consulta, (nombre,))
             resultado = cursor.fetchone()
-            
+
             return resultado
 
         except mysql.connector.Error as err:
             logger.exception("Error al verificar medio de pago:")
             raise
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
 
     def restaurarMedioPago(self, id_medio, facturar):
         """
@@ -1011,19 +1080,22 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             consulta = "UPDATE MEDIO_PAGO SET eliminado = 0, facturar = %s WHERE id_medio_pago = %s"
             cursor.execute(consulta, (facturar, id_medio))
             conexión.commit()
-            
-            logger.info(f"Medio de pago ID {id_medio} restaurado exitosamente.")
+
+            logger.info(
+                f"Medio de pago ID {id_medio} restaurado exitosamente.")
 
         except mysql.connector.Error as err:
             logger.exception("Error al restaurar medio de pago:")
             raise
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
 
     def ingresarNuevoMedioPago(self, nombre, facturar):
         """
@@ -1037,20 +1109,22 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             consulta = "INSERT INTO MEDIO_PAGO(nombre, facturar) VALUES (%s, %s)"
             cursor.execute(consulta, (nombre, facturar))
             conexión.commit()
-            
+
             logger.info(f"Medio de pago '{nombre}' creado exitosamente.")
 
         except mysql.connector.Error as err:
             logger.exception("Error al crear medio de pago:")
             raise
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
-    
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
+
     def eliminarMedioPagoLogico(self, nombre):
         """
         Marca un medio de pago como eliminado (eliminado = 1) en la base de datos.
@@ -1062,15 +1136,16 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Actualización lógica por nombre
             consulta = "UPDATE MEDIO_PAGO SET eliminado = 1 WHERE nombre = %s"
             cursor.execute(consulta, (nombre,))
-            
+
             if cursor.rowcount == 0:
                 # Si no afectó ninguna fila, algo raro pasó (quizás ya estaba borrado)
-                logger.warning(f"No se encontró o no se pudo eliminar el medio: {nombre}")
-            
+                logger.warning(
+                    f"No se encontró o no se pudo eliminar el medio: {nombre}")
+
             conexión.commit()
             logger.info(f"Medio de pago '{nombre}' eliminado lógicamente.")
 
@@ -1078,9 +1153,11 @@ class BaseDeDatos:
             logger.exception("Error de MySQL al eliminar medio de pago:")
             raise
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
-    
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
+
     def consultarMediosPago(self):
         """
         Consulta todos los medios de pago registrados en la tabla MEDIO_PAGO.
@@ -1094,12 +1171,12 @@ class BaseDeDatos:
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             # 1. Abre la conexión a la base de datos
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # 2. Consulta SQL
             consulta = """
                 SELECT nombre, facturar 
@@ -1107,21 +1184,22 @@ class BaseDeDatos:
                 WHERE eliminado = 0
                 ORDER BY nombre;
             """
-            
+
             # 3. Ejecución de la consulta
             cursor.execute(consulta)
             filas = cursor.fetchall()
-            
+
             logger.info(f"Se consultaron {len(filas)} medios de pago.")
             return filas
-        
+
         except mysql.connector.Error as err:
             logger.exception("Error de MySQL al consultar medios de pago:")
             return None
-        
+
         except Exception as e:
             # 4. Manejo de excepciones genéricas
-            logger.exception(f"Error inesperado al consultar medios de pago: {e}")
+            logger.exception(
+                f"Error inesperado al consultar medios de pago: {e}")
             return None
 
         finally:
@@ -1132,7 +1210,7 @@ class BaseDeDatos:
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
                 logger.info("Conexión a la base de datos cerrada.")
-    
+
     def consultarReporteProductos(self):
         """
         Consulta el reporte de productos: Nombre, Unidades vendidas y Recaudación.
@@ -1141,11 +1219,11 @@ class BaseDeDatos:
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Consulta de Agregación
             # Usamos COALESCE para que muestre 0 en vez de NULL si no hay ventas
             consulta = """
@@ -1164,7 +1242,7 @@ class BaseDeDatos:
                 ORDER BY 
                     recaudacion DESC;
             """
-            
+
             cursor.execute(consulta)
             filas = cursor.fetchall()
             return filas
@@ -1173,10 +1251,11 @@ class BaseDeDatos:
             logger.exception("Error MySQL al consultar reporte productos:")
             return None
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
             if 'conexión' in locals() and conexión and conexión.is_connected():
                 conexión.close()
-    
+
     def eliminar_clase(self, id_clase):
         """Elimina una clase por su código (ID)."""
         conexión = None
@@ -1192,9 +1271,11 @@ class BaseDeDatos:
             print(f"Error al eliminar: {e}")
             return False
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
-            
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
+
     def obtenerDetalleMedioPago(self, nombre):
         """
         Obtiene los detalles (facturar) de un medio de pago por su nombre.
@@ -1206,19 +1287,21 @@ class BaseDeDatos:
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             consulta = "SELECT facturar FROM MEDIO_PAGO WHERE nombre = %s"
             cursor.execute(consulta, (nombre,))
             resultado = cursor.fetchone()
-            
-            return resultado # Devuelve (1,) o (0,) o None
+
+            return resultado  # Devuelve (1,) o (0,) o None
 
         except mysql.connector.Error as err:
             logger.exception("Error al obtener detalle de medio de pago:")
             return None
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
 
     def registrarVenta(self, datos, intentos=MÁX_INTENTOS):
         """
@@ -1228,7 +1311,7 @@ class BaseDeDatos:
         Args:
             datos (list): [nombre_medio_pago, fecha_hora]
             intentos (int): Número máximo de reintentos.
-        
+
         Returns:
             int: El id_venta generado.
         """
@@ -1243,24 +1326,26 @@ class BaseDeDatos:
             try:
                 conexión = self.abrir()
                 cursor = conexión.cursor()
-                
+
                 # --- CONSULTA CON SUBCONSULTA ---
                 # Insertamos buscando el ID directamente en la misma sentencia
                 consulta = """INSERT INTO VENTA(id_medio_pago, fecha_hora) 
                               VALUES ((SELECT id_medio_pago FROM MEDIO_PAGO WHERE nombre = %s), %s);"""
-                
+
                 cursor.execute(consulta, datos)
                 id_venta_generado = cursor.lastrowid
-                
+
                 conexión.commit()
                 reintentar = False
-                logger.info(f"Venta registrada exitosamente con ID: {id_venta_generado}.")
+                logger.info(
+                    f"Venta registrada exitosamente con ID: {id_venta_generado}.")
 
             except mysql.connector.errors.InternalError as err:
                 intento += 1
                 id_venta_generado = None
-                if err.errno == 1213: # Deadlock
-                    logger.warning(f"Deadlock detectado. Intento {intento}/{intentos}.")
+                if err.errno == 1213:  # Deadlock
+                    logger.warning(
+                        f"Deadlock detectado. Intento {intento}/{intentos}.")
                     if intento < intentos:
                         time.sleep(1)
                         continue
@@ -1272,24 +1357,30 @@ class BaseDeDatos:
 
             except mysql.connector.Error as err:
                 # Capturar error si el nombre del medio de pago no existe (Column 'id_medio_pago' cannot be null)
-                if err.errno == 1048: 
-                    logger.error(f"Error: El medio de pago '{datos[0]}' no existe o no es válido.")
-                    raise ValueError(f"El medio de pago '{datos[0]}' no es válido.")
+                if err.errno == 1048:
+                    logger.error(
+                        f"Error: El medio de pago '{datos[0]}' no existe o no es válido.")
+                    raise ValueError(
+                        f"El medio de pago '{datos[0]}' no es válido.")
                 else:
-                    logger.exception("Error de MySQL durante el registro de la venta:")
+                    logger.exception(
+                        "Error de MySQL durante el registro de la venta:")
                     raise
 
             except Exception as e:
                 id_venta_generado = None
-                logger.exception("Error inesperado durante el registro de la venta:")
+                logger.exception(
+                    "Error inesperado durante el registro de la venta:")
                 raise
 
             finally:
-                if cursor: cursor.close()
-                if conexión and conexión.is_connected(): conexión.close()
-        
+                if cursor:
+                    cursor.close()
+                if conexión and conexión.is_connected():
+                    conexión.close()
+
         return id_venta_generado
-    
+
     def consultarVentasConTotal(self):
         """
         Consulta todas las ventas de la tabla VENTA.
@@ -1301,11 +1392,11 @@ class BaseDeDatos:
         logger = logging.getLogger(__name__)
         conexión = None
         cursor = None
-        
+
         try:
             conexión = self.abrir()
             cursor = conexión.cursor()
-            
+
             # Consulta actualizada con JOIN
             consulta = """
                 SELECT
@@ -1322,12 +1413,13 @@ class BaseDeDatos:
                 ORDER BY
                     V.fecha_hora DESC;
             """
-            
+
             cursor.execute(consulta)
             filas = cursor.fetchall()
-            logger.info(f"Se consultaron {len(filas)} ventas con medio de pago y total.")
+            logger.info(
+                f"Se consultaron {len(filas)} ventas con medio de pago y total.")
             return filas
-        
+
         except mysql.connector.Error as err:
             logger.exception("Error de MySQL al consultar ventas:")
             return None
@@ -1336,9 +1428,11 @@ class BaseDeDatos:
             return None
 
         finally:
-            if cursor: cursor.close()
-            if conexión and conexión.is_connected(): conexión.close()
-    
+            if cursor:
+                cursor.close()
+            if conexión and conexión.is_connected():
+                conexión.close()
+
     def eliminarProductoPorID(self, datos, intentos=MÁX_INTENTOS):
         """
         Elimina LÓGICAMENTE un producto existente de la tabla PRODUCTO usando su ID.
@@ -1352,50 +1446,55 @@ class BaseDeDatos:
         intento = 0
         logger = logging.getLogger(__name__)  # Obtener el logger
         reintentar = True
-        
+
         conexión = None
         cursor = None
-        
+
         # El id_producto está en la primera posición de la lista 'datos'
-        id_del_producto = datos[0] 
+        id_del_producto = datos[0]
 
         while intento < intentos and reintentar:
             try:
                 conexión = self.abrir()  # Abrir la conexión
                 cursor = conexión.cursor()
-                
+
                 # Consulta ADAPTADA para la eliminación LÓGICA (UPDATE)
                 consulta = """UPDATE PRODUCTO
                               SET eliminado = 1
                               WHERE id_producto = %s;
                            """
-                
+
                 cursor.execute(consulta, datos)
-                
+
                 # Se verifica si realmente se afectó una fila (el producto existía y no estaba ya eliminado)
                 if cursor.rowcount == 0:
-                    logger.warning(f"Producto ID: {id_del_producto} no encontrado o ya estaba eliminado.")
+                    logger.warning(
+                        f"Producto ID: {id_del_producto} no encontrado o ya estaba eliminado.")
                     # Aún si no se encontró, la operación es exitosa desde el punto de vista lógico (el producto no está activo)
-                
+
                 conexión.commit()  # Confirmar la transacción
                 reintentar = False
-                logger.info(f"Producto ID: {id_del_producto} eliminado LÓGICAMENTE.")
+                logger.info(
+                    f"Producto ID: {id_del_producto} eliminado LÓGICAMENTE.")
 
             except mysql.connector.errors.InternalError as err:
                 intento += 1
                 if err.errno == 1213:  # Deadlock
-                    logger.warning(f"Deadlock detectado al eliminar producto. Intento {intento}/{intentos}.")
+                    logger.warning(
+                        f"Deadlock detectado al eliminar producto. Intento {intento}/{intentos}.")
                     if intento < intentos:
                         time.sleep(1)  # espera antes de reintentar
                         continue
                     else:
-                        logger.error("No se pudo resolver el deadlock al eliminar producto.")
+                        logger.error(
+                            "No se pudo resolver el deadlock al eliminar producto.")
                         raise
                 else:
-                    raise # Relanzar otros InternalError
+                    raise  # Relanzar otros InternalError
 
             except mysql.connector.Error as err:
-                logger.exception("Error de MySQL durante la eliminación lógica del producto:")
+                logger.exception(
+                    "Error de MySQL durante la eliminación lógica del producto:")
                 raise
 
             finally:
@@ -1412,9 +1511,9 @@ class BaseDeDatos:
     def respaldarBaseDeDatos(self, ubicación_respaldo):
         config = self.obtener_configuración()
         base_de_datos = config['database']['database']
-        #Obtenemos la fecha actual
+        # Obtenemos la fecha actual
         fecha = datetime.today().strftime('%H_%M_%S_del_%d_%m_%Y')
-        #Nombre del archivo de respaldo
+        # Nombre del archivo de respaldo
         respaldo = r'Respaldo_a_las_' + str(fecha) + '.sql'
         with open(ubicación_respaldo + '/' + respaldo, 'w') as out:
             """
@@ -1434,19 +1533,21 @@ class BaseDeDatos:
             )
             """
             comando = [
-                        r'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe',
-                        "--defaults-extra-file=C:\\Users\\Gabriel\\.mydumps.cnf",
-                        "--databases",
-                        base_de_datos,
-                        # ↓↓↓ Opciones añadidas para incluir la lógica de negocio ↓↓↓
-                        "--routines",  # Incluye Procedimientos Almacenados y Funciones
-                        "--events",    # Incluye Eventos
-                        "--triggers"   # Asegura la inclusión de Triggers (opcional pero recomendado)
-                      ]  
+                r'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe',
+                "--defaults-extra-file=C:\\Users\\Gabriel\\.mydumps.cnf",
+                "--databases",
+                base_de_datos,
+                # ↓↓↓ Opciones añadidas para incluir la lógica de negocio ↓↓↓
+                "--routines",  # Incluye Procedimientos Almacenados y Funciones
+                "--events",    # Incluye Eventos
+                # Asegura la inclusión de Triggers (opcional pero recomendado)
+                "--triggers"
+            ]
 
             subprocess.run(
-                            comando,
-                            stdout=out,
-                            creationflags=subprocess.CREATE_NO_WINDOW,  # Evita mostrar la ventana de la consola,
-                            text=True  # Recomendado para manejar la salida correctamente
-                          )
+                comando,
+                stdout=out,
+                # Evita mostrar la ventana de la consola,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                text=True  # Recomendado para manejar la salida correctamente
+            )

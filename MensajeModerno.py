@@ -5,108 +5,124 @@ import sys
 
 NOMBRE_ICONO = "librería.ico"
 
+
 class MensajeModerno(tk.Toplevel):
     def __init__(self, parent, título, mensaje, tipo="advertencia"):
-        
         super().__init__(parent)
-        self.overrideredirect(True)  # Quitar bordes ANTES de que Windows pinte nada
-        # --- NUEVO: Configurar el Ícono de la ventana ---
+
+        # 1. OCULTAR AL NACER (Anti-parpadeo)
+        # Esto es vital: ocultamos la ventana mientras calculamos su tamaño real
+        self.withdraw()
+
+        # Quitamos bordes temporalmente para cálculos más limpios (opcional)
+        self.overrideredirect(True)
+
+        self.resultado = False
+
+        # --- Configurar Ícono (Igual que antes) ---
         try:
-            
-            # Detectar si es ejecutable (.exe) o script (.py)
             if getattr(sys, 'frozen', False):
                 base_dir = sys._MEIPASS
             else:
                 base_dir = os.path.dirname(os.path.abspath(__file__))
-            
-            # Asumiendo que el icono está en la misma carpeta que este archivo
             ruta_icono = os.path.join(base_dir, NOMBRE_ICONO)
-            
             if os.path.exists(ruta_icono):
                 self.iconbitmap(ruta_icono)
         except Exception:
-            pass # Si falla, se muestra el icono por defecto
-        # ------------------------------------------------
-        
-        # --- ANTI PARPADEO REAL ---
-        self.withdraw()   # La ventana NO aparece aún
-        
-        self.resultado = False 
+            pass
+        # ------------------------------------------
 
-        # 1. Configuración de la ventana
+        # Configuración básica
         self.title(título)
         self.configure(bg="white")
         self.resizable(False, False)
-        
-        # 2. Configurar Icono y Colores
+
+        # Selección de íconos y colores
         if tipo == "error":
             icono = "❌"
             color_icono = "red"
-        elif tipo == "éxito": 
-            icono = "✅"
-            color_icono = "#008000"
-        elif tipo == "exito": 
+        elif tipo in ["éxito", "exito"]:
             icono = "✅"
             color_icono = "#008000"
         elif tipo == "pregunta":
             icono = "❓"
-            color_icono = "#0078D4" # Azul
-        else: # advertencia
+            color_icono = "#0078D4"
+        else:  # advertencia
             icono = "⚠️"
             color_icono = "#FFC107"
 
-        # 3. Layout Principal
+        # --- INTERFAZ (WIDGETS) ---
         frame_principal = tk.Frame(self, bg="white", padx=20, pady=20)
         frame_principal.pack(expand=True, fill="both")
 
-        # 4. Icono
-        lbl_icono = tk.Label(frame_principal, text=icono, font=("Segoe UI", 30), 
+        # Icono
+        lbl_icono = tk.Label(frame_principal, text=icono, font=("Segoe UI", 30),
                              bg="white", fg=color_icono)
         lbl_icono.pack(side="left", padx=(0, 15), anchor="n")
 
-        # 5. Mensaje
-        lbl_mensaje = tk.Label(frame_principal, text=mensaje, font=("Segoe UI", 11), 
-                               bg="white", fg="#333333", justify="left", wraplength=350)
+        # Mensaje
+        # wraplength controla el ancho máximo del texto antes de saltar de línea
+        lbl_mensaje = tk.Label(frame_principal, text=mensaje, font=("Segoe UI", 11),
+                               bg="white", fg="#333333", justify="left", wraplength=400)
         lbl_mensaje.pack(side="top", fill="x", pady=(5, 15))
 
-        # 6. Botones
+        # Botones
         if tipo == "pregunta":
             frame_botones = tk.Frame(frame_principal, bg="white")
             frame_botones.pack(side="bottom", anchor="e")
-            
-            btn_no = ttk.Button(frame_botones, text="No", command=self.btn_cancelar, style="TButton")
+
+            btn_no = ttk.Button(frame_botones, text="No",
+                                command=self.btn_cancelar, style="TButton")
             btn_no.pack(side="right", padx=(5, 0))
-            
-            btn_si = ttk.Button(frame_botones, text="Sí", command=self.btn_aceptar, style="TButton")
+
+            btn_si = ttk.Button(frame_botones, text="Sí",
+                                command=self.btn_aceptar, style="TButton")
             btn_si.pack(side="right")
             btn_si.focus_set()
-            
         else:
-            btn_aceptar = ttk.Button(frame_principal, text="Aceptar", command=self.btn_aceptar, style="TButton")
+            btn_aceptar = ttk.Button(
+                frame_principal, text="Aceptar", command=self.btn_aceptar, style="TButton")
             btn_aceptar.pack(side="bottom", anchor="e")
             btn_aceptar.focus_set()
 
-        # 7. Centrar ventana
-        self.update_idletasks() # Calcula tamaños necesarios
-        ancho = self.winfo_width()
-        alto = self.winfo_height()
-        x_padre = parent.winfo_x()
-        y_padre = parent.winfo_y()
-        ancho_padre = parent.winfo_width()
-        alto_padre = parent.winfo_height()
-        
-        x = x_padre + (ancho_padre // 2) - (ancho // 2)
-        y = y_padre + (alto_padre // 2) - (alto // 2)
-        
-        self.geometry(f"+{x}+{y}")
+        # --- LÓGICA DE CENTRADO AUTOMÁTICO ---
+        self.centrar_en_ventana_padre(parent)
 
-        self.deiconify()  # Ahora sí, mostrar la ventana
+        # Restaurar bordes y mostrar
         self.overrideredirect(False)
+        self.deiconify()
 
-        # 8. Hacer modal
+        # Hacer modal (bloquea la ventana de atrás)
         self.transient(parent)
         self.grab_set()
         parent.wait_window(self)
+
+    def centrar_en_ventana_padre(self, parent):
+        """
+        Calcula la geometría exacta basada en el contenido interno (reqwidth)
+        y posiciona la ventana en el centro absoluto del padre.
+        """
+        # 1. Forzar a Tkinter a calcular el tamaño de los widgets internos AHORA
+        self.update_idletasks()
+
+        # 2. Obtener las dimensiones que Tkinter determinó necesarias (reqwidth/reqheight)
+        # Esto funciona aunque la ventana esté oculta (withdraw)
+        ancho_ventana = self.winfo_reqwidth()
+        alto_ventana = self.winfo_reqheight()
+
+        # 3. Obtener coordenadas absolutas y tamaño del padre
+        # winfo_rootx/y nos da la posición real en la pantalla del monitor
+        padre_x = parent.winfo_rootx()
+        padre_y = parent.winfo_rooty()
+        padre_ancho = parent.winfo_width()
+        padre_alto = parent.winfo_height()
+
+        # 4. Calcular el centro matemático
+        x = padre_x + (padre_ancho // 2) - (ancho_ventana // 2)
+        y = padre_y + (padre_alto // 2) - (alto_ventana // 2)
+
+        # 5. Aplicar la geometría
+        self.geometry(f"{ancho_ventana}x{alto_ventana}+{x}+{y}")
 
     def btn_aceptar(self):
         self.resultado = True
