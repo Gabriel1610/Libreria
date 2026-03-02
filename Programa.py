@@ -8,10 +8,10 @@ from tkinter import scrolledtext as st
 from VentanaCierre import VentanaCierre
 import threading
 import functools
-from tkinter import simpledialog
 import facturación
 import sys
-import MensajeEntrada
+from MensajeEntrada import MensajeEntrada
+from VentanaCobro import VentanaCobro
 from datetime import datetime
 import funciones_útiles
 import validación_tipo_de_datos
@@ -1232,12 +1232,35 @@ class Aplicación(tk.Tk):
             self.labelframe_venta_producto, text=BOTÓN_QUITAR_CARRITO_VENTA, command=self.quitarDelCarrito)
         self.botón_quitar_carrito.grid(
             column=5, row=1, padx=PADX_GENERAL_VENTA, pady=PADY_GENERAL_VENTA, sticky=STICKY_WIDGET_OESTE_VENTA)
-
         self.botón_finalizar_venta = ttk.Button(
-            self.labelframe_venta_producto, text=BOTÓN_FINALIZAR_VENTA, command=self.finalizarVentaEnHilo)
-        self.botón_finalizar_venta.grid(column=COLUMNA_BOTÓN_FINALIZAR_VENTA, row=FILA_BOTÓN_FINALIZAR_VENTA,
-                                        padx=PADX_GENERAL_VENTA, pady=PADY_GENERAL_VENTA, sticky=STICKY_WIDGET_OESTE_VENTA)
+             self.labelframe_venta_producto, text=BOTÓN_FINALIZAR_VENTA, command=self.abrirVentanaCobro)
+        self.botón_finalizar_venta.grid(column=6, row=1, padx=PADX_GENERAL_VENTA, 
+                                        pady=PADY_GENERAL_VENTA, sticky=STICKY_WIDGET_OESTE_VENTA)
 
+    def abrirVentanaCobro(self):
+        """
+        Verifica el carrito y abre la ventana modal de cobro.
+        """
+        # 1. Verificar si hay productos
+        if not self.tabla_carrito.get_children():
+            MensajeModerno(self, "Carrito vacío", "No hay productos para vender.", tipo="advertencia")
+            return
+
+        # 2. Obtener el total
+        try:
+            total_str = self.etiqueta_valor_total_producto.cget('text')
+            total_float = float(total_str)
+        except ValueError:
+            total_float = 0.0
+
+        if total_float <= 0:
+            MensajeModerno(self, "Error", "El total de la venta no puede ser 0.", tipo="error")
+            return
+
+        # 3. Abrir la ventana modal
+        # Pasamos: self (padre), total, la base de datos, y la función a ejecutar si todo sale bien.
+        VentanaCobro(self, total_float, self.base_de_datos, self.procesarVentaFinal)
+        
     def vaciarCarrito(self):
         """
         Verifica si el carrito tiene items. Si los tiene,
@@ -1338,210 +1361,6 @@ class Aplicación(tk.Tk):
                 self, "Error", f"Ocurrió un error al cargar los detalles: {str(e)}", tipo="error")
             self.etiqueta_valor_total_producto.config(
                 text="0.00")  # Reset total
-
-    def finalizarVenta(self):
-        """
-        Inicia el proceso de finalización: Valida carrito, confirma monto
-        y abre la ventana de selección de medio de pago.
-        """
-        # 1. Validar Carrito
-        items_carrito_ids = self.tabla_carrito.get_children()
-        if not items_carrito_ids:
-            MensajeModerno(self, "Carrito vacío",
-                           "No hay productos en el carrito.", tipo="advertencia")
-            return
-
-        # 2. Confirmar Monto
-        total_venta_str = self.etiqueta_valor_total_producto.cget('text')
-        confirmacion = MensajeModerno(self, "Confirmar Venta",
-                                      f"¿Desea finalizar la venta por un total de $ {total_venta_str}?", tipo="pregunta")
-
-        if confirmacion.resultado:
-            # 3. Abrir Ventana de Medio de Pago
-            self.abrirVentanaMedioPago()
-
-    def solicitarDineroEfectivo(self, nombre_medio_pago):
-        """
-        Abre una ventana para ingresar cuánto dinero entregó el cliente.
-        Calcula el vuelto y valida que el monto sea suficiente.
-        """
-        # Obtener el total a pagar
-        total_venta_str = self.etiqueta_valor_total_producto.cget('text')
-        try:
-            total_venta = float(total_venta_str)
-        except ValueError:
-            total_venta = 0.0
-
-        # Crear ventana modal
-        ventana_efectivo = tk.Toplevel(self)
-        ventana_efectivo.title("Cobro en Efectivo")
-        ventana_efectivo.configure(bg="white")
-        ventana_efectivo.resizable(False, False)
-        ventana_efectivo.geometry("350x250")
-
-        # Centrar ventana
-        x = self.winfo_x() + (self.winfo_width() // 2) - 175
-        y = self.winfo_y() + (self.winfo_height() // 2) - 125
-        ventana_efectivo.geometry(f"+{x}+{y}")
-
-        # Icono
-        try:
-            if getattr(sys, 'frozen', False):
-                base_dir = sys._MEIPASS
-            else:
-                base_dir = os.path.dirname(__file__)
-            ruta_icono = os.path.join(base_dir, NOMBRE_ICONO)
-            if os.path.exists(ruta_icono):
-                ventana_efectivo.iconbitmap(ruta_icono)
-        except Exception:
-            pass
-
-        # --- INTERFAZ ---
-
-        # 1. Mostrar Total
-        lbl_total = tk.Label(ventana_efectivo, text=f"Total a Pagar: $ {total_venta:.2f}",
-                             font=('Segoe UI', 14, 'bold'), bg="white", fg=COLOR_ACENTO)
-        lbl_total.pack(pady=(20, 10))
-
-        # 2. Etiqueta "Abonó con"
-        lbl_abono = tk.Label(ventana_efectivo, text="Su pago:",
-                             font=('Segoe UI', 11), bg="white")
-        lbl_abono.pack()
-
-        # 3. Entrada de dinero (Validada)
-        var_monto_recibido = tk.StringVar()
-        entry_monto = ttk.Entry(ventana_efectivo, textvariable=var_monto_recibido,
-                                font=('Segoe UI', 12), justify='center')
-        entry_monto.pack(pady=5, padx=40, fill='x')
-        entry_monto.focus()
-
-        # --- VALIDACIÓN USANDO funciones_útiles ---
-        entry_monto.bind(EVENTO_TECLA_PRESIONADA,
-                         lambda event: funciones_útiles.controlar_caracteres_precio(
-                             var_monto_recibido, entry_monto, 10, 2, event
-                         ))
-
-        # 4. Función de Cálculo y Confirmación
-        def confirmar_cobro(event=None):
-            contenido = var_monto_recibido.get().strip()
-
-            if not contenido:
-                return  # Ignorar si está vacío
-
-            try:
-                monto_recibido = float(contenido)
-
-                # A. Validar si el dinero alcanza
-                if monto_recibido < total_venta:
-                    MensajeModerno(ventana_efectivo, "Monto insuficiente",
-                                   f"El dinero recibido ($ {monto_recibido:.2f}) es menor al total ($ {total_venta:.2f}).",
-                                   tipo="advertencia")
-                    entry_monto.selection_range(0, tk.END)
-                    entry_monto.focus()
-                    return
-
-                # B. Calcular Cambio
-                cambio = monto_recibido - total_venta
-
-                # C. Mostrar Cambio (Modal dentro de modal)
-                # Al cerrar este mensaje, se ejecutará el cierre de venta
-                MensajeModerno(ventana_efectivo, "Cambio a devolver",
-                               f"Cambio: $ {cambio:.2f}", tipo="éxito")
-
-                # D. Finalizar Venta
-                ventana_efectivo.destroy()
-                self.procesarVentaFinal(nombre_medio_pago)
-
-            except ValueError:
-                MensajeModerno(ventana_efectivo, "Error",
-                               "Monto inválido.", tipo="error")
-
-        # Vincular Enter al botón
-        entry_monto.bind('<Return>', confirmar_cobro)
-
-        # 5. Botón Cobrar
-        btn_cobrar = ttk.Button(
-            ventana_efectivo, text="Cobrar e Imprimir", command=confirmar_cobro)
-        btn_cobrar.pack(pady=20, ipadx=10)
-
-        # Modalidad
-        ventana_efectivo.transient(self)
-        ventana_efectivo.grab_set()
-        self.wait_window(ventana_efectivo)
-
-    def abrirVentanaMedioPago(self):
-        """Abre una ventana modal para seleccionar el medio de pago."""
-
-        ventana_pago = tk.Toplevel(self)
-        ventana_pago.title("Seleccionar Medio de Pago")
-
-        # --- Configurar Icono ---
-        try:
-            if getattr(sys, 'frozen', False):
-                base_dir = sys._MEIPASS
-            else:
-                base_dir = os.path.dirname(__file__)
-            ruta_icono = os.path.join(base_dir, NOMBRE_ICONO)
-            if os.path.exists(ruta_icono):
-                ventana_pago.iconbitmap(ruta_icono)
-        except Exception:
-            pass
-        # ------------------------
-
-        ventana_pago.geometry("350x200")
-        ventana_pago.resizable(False, False)
-        ventana_pago.configure(bg="white")
-
-        # Centrar
-        x = self.winfo_x() + (self.winfo_width() // 2) - 175
-        y = self.winfo_y() + (self.winfo_height() // 2) - 100
-        ventana_pago.geometry(f"+{x}+{y}")
-
-        # Etiqueta
-        lbl = ttk.Label(ventana_pago, text="Seleccione el medio de pago:",
-                        background="white", font=('Segoe UI', 11))
-        lbl.pack(pady=(20, 10))
-
-        # Obtener medios de la BD
-        medios_raw = self.base_de_datos.consultarMediosPago()
-        nombres_medios = [m[0] for m in medios_raw] if medios_raw else []
-
-        # Combobox
-        combo_medios = ttk.Combobox(
-            ventana_pago, values=nombres_medios, state="readonly", font=('Segoe UI', 10))
-        combo_medios.pack(pady=5, padx=20, fill='x')
-
-        # Botón Finalizar (Deshabilitado al inicio)
-        botón_finalizar = ttk.Button(
-            ventana_pago, text="Continuar", state="disabled", style="TButton")
-        botón_finalizar.pack(pady=20)
-
-        # Función para habilitar botón
-        def habilitar_boton(event):
-            botón_finalizar.config(state="normal")
-
-        combo_medios.bind("<<ComboboxSelected>>", habilitar_boton)
-
-        # --- LÓGICA PRINCIPAL DE SELECCIÓN ---
-        def confirmar_pago():
-            medio_seleccionado = combo_medios.get()
-            ventana_pago.destroy()  # Cerrar ventana de selección
-
-            # Lógica para Efectivo vs Otros
-            if medio_seleccionado.lower() == "efectivo":
-                # Si es efectivo, pedimos cuánto abonó
-                self.solicitarDineroEfectivo(medio_seleccionado)
-            else:
-                # Si es otro medio, el cambio es 0
-                MensajeModerno(self, "Cambio", "Cambio: $ 0,00", tipo="info")
-                self.procesarVentaFinal(medio_seleccionado)
-
-        botón_finalizar.config(command=confirmar_pago)
-
-        # Hacer modal
-        ventana_pago.transient(self)
-        ventana_pago.grab_set()
-        self.wait_window(ventana_pago)
 
     def actualizarTablaVentas(self):
         """
@@ -2467,6 +2286,14 @@ class Aplicación(tk.Tk):
             # O dejar el foco en el código:
             self.entrada_código_producto_venta.focus()
 
+    def actualizarListaMediosVenta(self):
+        """Carga los medios de pago en el Listbox de la pestaña Venta."""
+        self.listbox_medios_venta.delete(0, tk.END)
+        medios = self.base_de_datos.consultarMediosPago()
+        if medios:
+            for medio in medios:
+                self.listbox_medios_venta.insert(tk.END, medio[0])
+        
     def eliminarVenta(self):
         """
         Elimina la VENTA seleccionada de la tabla_ventas (historial).
@@ -3050,24 +2877,26 @@ class Aplicación(tk.Tk):
 
     def actualizarListaMedios(self):
         """
-        Consulta la base de datos y rellena la Listbox de Medios de Pago.
+        Consulta la base de datos y rellena las Listbox de Medios de Pago (Ajustes y Venta).
         """
         try:
-            # 1. Limpiar la lista actual
-            self.listbox_medios.delete(0, tk.END)
-
-            # 2. Consultar DB
             medios = self.base_de_datos.consultarMediosPago()
+            
+            # 1. Actualizar Lista en Ajustes
+            self.listbox_medios.delete(0, tk.END)
+            
+            # 2. Actualizar Lista en Ventas (NUEVO)
+            if hasattr(self, 'listbox_medios_venta'): # Verificamos que ya exista
+                self.listbox_medios_venta.delete(0, tk.END)
 
-            # 3. Insertar nuevos datos
             if medios:
                 for medio in medios:
-                    # medio es una tupla (nombre,), insertamos el primer elemento
                     self.listbox_medios.insert(tk.END, medio[0])
+                    if hasattr(self, 'listbox_medios_venta'):
+                        self.listbox_medios_venta.insert(tk.END, medio[0])
 
         except Exception as e:
-            MensajeModerno(
-                self, "Error", f"No se pudo actualizar la lista de medios: {e}", tipo="error")
+            MensajeModerno(self, "Error", f"No se pudo actualizar la lista de medios: {e}", tipo="error")
 
     def cambiarEstadoControlesMedios(self, estado):
         """
@@ -3092,27 +2921,6 @@ class Aplicación(tk.Tk):
             self.lbl_icono_facturar.bind("<Button-1>", self.toggleFacturar)
             self.lbl_icono_facturar.config(cursor="hand2")
             self.actualizarIconoFacturar()  # Restaura el color verde/rojo según el valor
-
-    def finalizarVentaEnHilo(self):
-        def cargar_datos_ventas():
-            try:
-                # Programa la actualización de la tabla en el hilo principal.
-                # Usa 'ventana.after(0, ...)' para ejecutar 'actualizarTablaProductos'
-                # tan pronto como sea posible en el hilo principal.
-                # Actualizar la interfaz en el hilo principal
-                self.after(0, self.finalizarVenta)
-            except Exception as e:
-                # Maneja cualquier error que ocurra durante la carga de datos.
-                # Imprime un mensaje de error.
-                print(f"Error al cargar datos: {e}")
-
-        # Crea un hilo secundario para la función 'cargar_datos'.
-        # 'daemon=True' asegura que el hilo se cierre cuando la aplicación principal se cierre.
-        hilo = threading.Thread(target=cargar_datos_ventas, daemon=True)
-        # Agrega el hilo a la lista de hilos para mantener una referencia.
-        self.hilos.append(hilo)
-        # Inicia la ejecución del hilo.
-        hilo.start()
 
     def cargarRegistros(self, event=None):
         """

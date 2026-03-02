@@ -1,15 +1,23 @@
+import tkinter as tk
+from tkinter import ttk
+import os
+import sys
+
+# Definimos la constante aquí también para que encuentre el ícono
+NOMBRE_ICONO = "librería.ico"
+
 class MensajeEntrada(tk.Toplevel):
     """
-    Ventana modal moderna para solicitar un texto al usuario (Reemplazo de simpledialog).
+    Ventana modal moderna para solicitar un texto al usuario.
     """
     def __init__(self, parent, título, mensaje):
         super().__init__(parent)
         
-        # 1. OCULTAR AL NACER
+        # 1. OCULTAR AL NACER (Técnica Anti-parpadeo)
         self.withdraw()
         self.overrideredirect(True)
         
-        self.resultado = None # Aquí se guardará lo que escriba el usuario
+        self.resultado = None 
 
         # --- Icono de la ventana ---
         try:
@@ -37,7 +45,7 @@ class MensajeEntrada(tk.Toplevel):
                              bg="white", fg="#0078D4")
         lbl_icono.pack(side="left", padx=(0, 15), anchor="n")
 
-        # Contenedor derecho (Mensaje + Entry)
+        # Contenedor derecho 
         frame_derecho = tk.Frame(frame_principal, bg="white")
         frame_derecho.pack(side="left", fill="both", expand=True)
 
@@ -46,14 +54,12 @@ class MensajeEntrada(tk.Toplevel):
                                bg="white", fg="#333333", justify="left", wraplength=400)
         lbl_mensaje.pack(side="top", anchor="w", pady=(5, 10))
 
-        # --- CUADRO DE TEXTO (ENTRY) ---
+        # --- CUADRO DE TEXTO ---
         self.entrada_texto = ttk.Entry(frame_derecho, width=40, font=('Segoe UI', 10))
         self.entrada_texto.pack(side="top", anchor="w", fill="x", pady=(0, 10))
-        self.entrada_texto.focus_set() # Poner el foco para escribir directo
+        self.entrada_texto.focus_set() 
         
-        # Permitir confirmar con ENTER
         self.entrada_texto.bind("<Return>", lambda event: self.btn_aceptar())
-        # Permitir cancelar con ESCAPE
         self.bind("<Escape>", lambda event: self.btn_cancelar())
 
         # Botones
@@ -66,7 +72,7 @@ class MensajeEntrada(tk.Toplevel):
         btn_aceptar = ttk.Button(frame_botones, text="Aceptar", command=self.btn_aceptar, style="TButton")
         btn_aceptar.pack(side="right")
 
-        # --- LÓGICA DE CENTRADO ---
+        # --- LÓGICA DE CENTRADO (Igual a MensajeModerno) ---
         self.centrar_en_ventana_padre(parent)
 
         # Mostrar
@@ -99,9 +105,7 @@ class MensajeEntrada(tk.Toplevel):
             self.resultado = valor
             self.destroy()
         else:
-            # Opcional: Si quieres que sea obligatorio, no cierras y muestras error, 
-            # o simplemente no haces nada. Aquí permitimos vacío = cancelar o retornamos ""
-            self.entrada_texto.focus() # Mantener foco
+            self.entrada_texto.focus()
 
     def btn_cancelar(self):
         self.resultado = None
